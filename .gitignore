@@ -1,0 +1,15 @@
+# 运行脚本生成的产物，不进仓库
+/data/
+/src/
+/kb/
+/drafts/
+/notes/
+/tools/
+
+# Python
+__pycache__/
+*.pyc
+
+# 临时文件
+new.cs
+*.log
