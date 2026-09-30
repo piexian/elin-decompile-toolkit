@@ -14,7 +14,19 @@ TYPE_RE = re.compile(
     r'(?:public|internal|private|protected|abstract|sealed|static|partial|unsafe|readonly|ref)'
     r'[\w\s<>,\.\[\]]*?\b(class|struct|interface|enum|record)\s+([A-Za-z_]\w*)'
 )
-HUNK_RE = re.compile(r'^(\d+)(?:,(\d+))?[acd]')
+HUNK_UNIFIED = re.compile(r'^@@ -\d+(?:,\d+)? \+(\d+)')
+HUNK_NORMAL = re.compile(r'^(\d+)(?:,(\d+))?[acd]')
+
+
+def hunk_start(line, cur_new):
+    """返回该行是否为 hunk 头及新文件起始行。兼容 unified(@@)与 normal(3,5c) 两种 diff。"""
+    m = HUNK_UNIFIED.match(line)
+    if m:
+        return True, int(m.group(1))
+    m = HUNK_NORMAL.match(line)
+    if m:
+        return True, int(m.group(2) or m.group(1))
+    return False, cur_new
 
 
 def scan_types(path):
@@ -43,22 +55,21 @@ def main(old_path, new_path, diff_path):
     cur_old = cur_new = 0
     with open(diff_path, encoding='utf-8', errors='ignore') as f:
         for line in f:
-            m = HUNK_RE.match(line)
-            if m:
-                cur_old = int(m.group(1))
-                cur_new = int(m.group(2) or m.group(1))
+            is_hunk, start = hunk_start(line, cur_new)
+            if is_hunk:
+                cur_new = start
                 idx = bisect.bisect_right(lines, cur_new) - 1
                 key = types[idx][1] if idx >= 0 else '<file scope>'
                 stats[key]['hunks'] += 1
                 continue
             if line.startswith('+++') or line.startswith('---'):
                 continue
-            if line[:1] in '<>+':
+            if line[:1] in '<>+-' and not line.startswith(('<<<', '>>>', '===')):
                 idx = bisect.bisect_right(lines, cur_new) - 1
                 key = types[idx][1] if idx >= 0 else '<file scope>'
-                if line[0] == '>':
+                if line[0] in '>+':
                     stats[key]['+'] += 1
-                elif line[0] == '<':
+                else:
                     stats[key]['-'] += 1
                 if len(samples[key]) < 14:
                     samples[key].append(line.rstrip())
