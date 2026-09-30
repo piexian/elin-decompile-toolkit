@@ -19,54 +19,6 @@ def w(outdir, name, text):
 
 PLACEHOLDER = {'*r', '*', '-', '?', '　'}
 
-# 语料侧的待办/编辑状态过滤。只动 kb/ 里的拷贝，工作区的 drafts/notes 保持原样。
-TODO_SENT = re.compile(r'(?:待补充|有待补充|待考证|待补全|待完善|待更新|待重写)\s*[。.]?\s*$')
-TODO_WORD = re.compile(r'待补充|有待补充|待考证|待补全|待完善|待更新|待重写|待创建')
-STATUS_CELL = re.compile(r'\|\|\s*(?:待创建|已有|✅[^|]*|📝[^|]*|❌[^|]*)\s*$')
-SECTION_TODO = re.compile(r'^(=+)\s*待补充[^=]*\1\s*$')
-
-
-def sanitize_kb_doc(text):
-    """剔除 wiki 编辑状态：表格状态列、纯待办句、句尾待办从句、待补充章节。"""
-    out, dropped, lines = [], 0, text.split('\n')
-    i = 0
-    while i < len(lines):
-        ln = lines[i]
-        m = SECTION_TODO.match(ln.strip())
-        if m:
-            # 待补充章节：标题连同其正文一并丢弃（到下一个同级或更高级标题）
-            level = len(m.group(1))
-            i += 1
-            while i < len(lines):
-                nxt = lines[i].strip()
-                if nxt.startswith('=') and len(nxt) - len(nxt.lstrip('=')) <= level:
-                    break
-                i += 1
-            dropped += 1
-            continue
-        stripped_cell = STATUS_CELL.sub('', ln)
-        if stripped_cell != ln:
-            dropped += 1
-            ln = stripped_cell
-        kw = TODO_WORD.search(ln)
-        if kw:
-            head = ln[:kw.start()]
-            # 待办从句前的最后一个分句分隔符；没有分隔符说明待办就是整句谓语 → 整行丢弃
-            pos = max(head.rfind('，'), head.rfind(','), head.rfind('：'),
-                      head.rfind(':'), head.rfind('、'))
-            prefix = head[:pos].rstrip() if pos > 0 else ''
-            body = prefix.removeprefix('* ').removeprefix('- ').strip()
-            if pos > 0 and len(body) >= 8 and not body.endswith(('的', '与', '和', '及', '等', '是')):
-                out.append(prefix.rstrip() + ('。' if not prefix.rstrip().endswith(('。', '.')) else ''))
-            else:
-                dropped += 1
-            i += 1
-            continue
-        out.append(ln)
-        i += 1
-    return '\n'.join(out), dropped
-
-
 def is_placeholder(v):
     return (v or '').strip() in PLACEHOLDER
 
@@ -150,43 +102,60 @@ def main():
         w(os.path.join(out, 'items'), f"{rid or r['name_en']}", '\n'.join(parts) + '\n')
         n += 1
     print('items:', n)
-    # 3. 代码/笔记/草稿直接进语料(按类/按文件)
-    # notes 与 drafts 是 wiki 工作文档，带「待补充/待创建」之类的编辑状态；
-    # 嵌入语料里这些是噪音，拷贝时过一遍 sanitize_kb_doc，工作区原文件不动。
+    # 3. 反编译源码按类拷贝
     import shutil
-    SKIP_NOTES = {'对标清单.md'}   # 站内缺口状态跟踪表，纯编辑状态，不进知识库
     missing = []
-    stripped = 0
-    for src, dst, do_sanitize in [('kb/src/classes', 'corpus/code', False),
-                                  ('kb/notes', 'corpus/notes', True),
-                                  ('kb/drafts', 'corpus/drafts', True)]:
-        s = os.path.join(ROOT, src.replace('/', os.sep))
-        d = os.path.join(D, dst.replace('/', os.sep))
-        if not os.path.exists(s):
+    for src, dst in [('kb/src/classes', 'corpus/code')]:
+        s_path = os.path.join(ROOT, src.replace('/', os.sep))
+        d_path = os.path.join(D, dst.replace('/', os.sep))
+        if not os.path.exists(s_path):
             missing.append(src)
-            os.makedirs(d, exist_ok=True)   # 留空目录，build_embed_chunks 才不会因为缺路径报错
+            os.makedirs(d_path, exist_ok=True)   # 留空目录，build_embed_chunks 才不会因为缺路径报错
             continue
-        if os.path.exists(d):
-            shutil.rmtree(d)
-        os.makedirs(d, exist_ok=True)
-        for root, dirs, names in os.walk(s):
-            dirs[:] = [x for x in dirs if x != '__pycache__']
-            for fn in names:
-                sp = os.path.join(root, fn)
-                dp = os.path.join(d, os.path.relpath(sp, s))
-                os.makedirs(os.path.dirname(dp), exist_ok=True)
-                if do_sanitize and fn.endswith(('.md', '.txt')):
-                    if fn in SKIP_NOTES:
-                        stripped += 1
-                        continue
-                    text = open(sp, encoding='utf-8').read()
-                    clean, n = sanitize_kb_doc(text)
-                    stripped += n
-                    open(dp, 'w', encoding='utf-8', newline='\n').write(clean)
-                else:
-                    shutil.copy2(sp, dp)
-    print('code/notes/drafts copied' + (f'（缺 {", ".join(missing)}，对应语料为空）' if missing else '')
-          + (f'；语料侧剔除待办/状态 {stripped} 处' if stripped else ''))
+        if os.path.exists(d_path):
+            shutil.rmtree(d_path)
+        shutil.copytree(s_path, d_path)
+    print('code copied' + (f'（缺 {", ".join(missing)}，对应语料为空）' if missing else ''))
+    # 4. 版本变动语料：直接渲染结构化源表 data/version_changes.json
+    # 人工考据知识如需进语料，往 data/knowledge/*.json 加同 schema 的条目，这里一并渲染
+    nv = 0
+    for src in ['data/version_changes.json'] + sorted(
+            os.listdir(os.path.join(ROOT, 'data', 'knowledge'))
+            if os.path.isdir(os.path.join(ROOT, 'data', 'knowledge')) else []):
+        sp = os.path.join(ROOT, src.replace('/', os.sep))
+        if not os.path.isfile(sp):
+            continue
+        doc = json.load(open(sp, encoding='utf-8'))
+        outdir = os.path.join(out, 'versions')
+        title = doc.get('topic') or '版本变动'
+        if 'versions' in doc:   # version_changes 全量源表 -> 每版本一节 + 总览一节
+            b = doc.get('baseline', {})
+            overview = ('# 版本变动总览\n\n'
+                        f"- 当前基线: {b.get('version', '')}（{b.get('versionInt', '')}，"
+                        f"{b.get('channel', '')}，{b.get('buildDate', '')} 构建；"
+                        f"语料同步于 {b.get('syncedAt', '')}）\n"
+                        + '\n'.join(f"- {v['version']}（{v.get('date', '')}）："
+                                    + '；'.join(sec['title'] for sec in v.get('sections', []))
+                                    for v in doc.get('versions', [])) + '\n')
+            w(outdir, '版本总览', overview)
+            nv += 1
+            for v in doc.get('versions', []):
+                parts = [f"# 版本变动：{v['version']}（{v.get('date', '')}）", '']
+                for sec in v.get('sections', []):
+                    parts.append(f"## {sec['title']}")
+                    parts += [f'- {pt}' for pt in sec.get('points', [])]
+                    parts.append('')
+                w(outdir, f"版本变动_{v['version']}", '\n'.join(parts) + '\n')
+                nv += 1
+        else:   # 单主题知识条目 -> 一节
+            parts = [f"# {title}", '']
+            for sec in doc.get('sections', []):
+                parts.append(f"## {sec['title']}")
+                parts += [f'- {pt}' for pt in sec.get('points', [])]
+                parts.append('')
+            w(outdir, title, '\n'.join(parts) + '\n')
+            nv += 1
+    print(f'versions 语料: {nv} 节（来自 version_changes.json 与 data/knowledge/*.json）')
 
 if __name__ == '__main__':
     main()

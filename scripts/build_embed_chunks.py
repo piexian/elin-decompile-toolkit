@@ -253,9 +253,9 @@ def main():
     sections = pack(entries)
     report.append(('data',) + write_batches(sections, 'data', 'data'))
 
-    # ---- doc：notes / drafts ----
+    # ---- doc：versions（版本变动，由源表渲染）+ data/knowledge 渲染出的条目 ----
     entries = []
-    for folder in ['notes', 'drafts']:
+    for folder in ['versions']:
         base = os.path.join(SRC, folder)
         for root, _, files in os.walk(base):
             for fn in sorted(files):
