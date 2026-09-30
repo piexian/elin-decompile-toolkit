@@ -1,0 +1,120 @@
+{
+  "baseline": {
+    "version": "EA 23.350 Patch 1",
+    "versionInt": "0.23.350.1",
+    "buildDate": "2026-09-28",
+    "channel": "Nightly",
+    "syncedAt": "2026-10-01"
+  },
+  "versions": [
+    {
+      "version": "EA 23.350 Patch 1",
+      "date": "2026-09-28",
+      "sections": [
+        {
+          "title": "遗物获取方式变更",
+          "points": [
+            "原 nightly 版「完成 into_darkness 任务自动赠送遗物槽位与宿卵配方」的隐藏逻辑已从 Game.cs 删除。",
+            "改为索林剧情奖励：完成 sorin_relic 剧情后 DramaOutcome.reward_sorin() 执行——身上没有遗物槽位（slot 46）则自动追加一个，未学会宿卵配方（relic_lesser）则教会，并播放 godbless 音效与 aura_heaven 特效。",
+            "宿卵（Embryolith）配方本身不变：宝石×1＋基因×1＋树脂×25，装饰台制作。"
+          ]
+        },
+        {
+          "title": "索林成为商人与新货币干曼德拉草",
+          "points": [
+            "索林改为 TraitUniqueMerchant（ShopType.Sorin），不可投资，商店等级 1。",
+            "新货币 money3 = 干曼德拉草（Dried Mandrake，日文 干しマンドレイク，中文待官方）。",
+            "货币兑换率：物品 1282→1、特质重置试剂 1386→5、卷轴 8288→3、法术书 9155→1，换算系数 1e-4。",
+            "索林剧情新增魔石（Magic Stone）、宿石（Vessel Stone）、Embryolith 设定对话。",
+            "索林商店货单：1282×5、法术书 9155、卷轴 8288×5、特质重置试剂 1386；原 curry 任务条件放宽为「完成 curry 或生存模式」。"
+          ]
+        },
+        {
+          "title": "新增怪物与奇怪的画",
+          "points": [
+            "paint_living（游荡的画，日文 さまよう絵画）：新怪，由 TraitStrangePainting 类的画被破坏时 2/3 概率刷出。",
+            "三个挂画物品（1390/1391/1392）带 StrangePainting 标记。",
+            "Wynan 系三只新怪：mass_steel_wynan / living_armor_wynan / armor_gold_wynan（日文 ワイナンの猟犬，中文与英文名未出，语言包 detail 误标为 hound of Wynan）。"
+          ]
+        },
+        {
+          "title": "配方与物品变动",
+          "points": [
+            "床类配方（bed、double bed 两种尺寸、modern bed、prince's bed、futon）全部新增可选床垫 +1401|1402。",
+            "咖啡类（coffee / cappuccino / espresso / hot cocoa）奶替代项 |778 移除，只能用奶。",
+            "忘却的灵药（Oblivion）设为 noListing，不再出现在配方列表、建造菜单和图鉴（RecipeSource.ShouldList()，f90 生存模式除外）。",
+            "材质表 142 → 141：删除 freeze 材质。",
+            "特质重置试剂 1386 描述更新：对自身以外无效、无法恢复部位。"
+          ]
+        },
+        {
+          "title": "任务图标与其他玩法改动",
+          "points": [
+            "任务头顶图标：新虚方法 TraitChara.ShouldShowQuestIcon()；索林（sorin_relic 未完成）、菲亚玛（主任务 phase≥200 且未对话，或家园有死亡成员请求复活）、阿什兰德（phase 0 未对话或 phase 200）各自实现。",
+            "BOSS（c_bossType != none）不可邀请入队。",
+            "用户地图的家园增益受政策 disableUsermapBenefit 控制。",
+            "天空块（TileTypeSky）生存模式下不能盖在有角色或物体的格子上。",
+            "天空旅行头盔扣 240 号元素经验（costSkyTravel × 20）。",
+            "合成材料搜索去重；招募池去重（已招募的不再出现）。",
+            "模组配置 UI：新接口 IModConfig、ModPackage.onBuildConfig、新类 LayerModConfig。"
+          ]
+        }
+      ]
+    },
+    {
+      "version": "EA 23.349",
+      "date": "2026-09-26",
+      "sections": [
+        {
+          "title": "时止（新机制）",
+          "points": [
+            "能力 ActStopTime（C# 类 ActTimeStop）：对地图上每个角色施加 ConTimeStop。",
+            "目标带元素 433（negateTimeStop，日文 時止め無効）可照常行动；施法者自身不受影响。",
+            "施法者力量耗尽或先脱身时全场解除；ShouldOverride 恒 true，覆盖同类状态。",
+            "配套新增：元素 6633、Stat 112、治疗能力 SpHealTouch（癒しの手，18+p/25+e/25）。",
+            "官方中文当时未出，语料保留英文/日文原文。"
+          ]
+        },
+        {
+          "title": "护士系（新怪物族）",
+          "points": [
+            "新增 CTAG.nurse 标签：带标签者会治疗敌对目标、不跳过满血目标、目标评分 +100。",
+            "新增 CTAG.notMeAgain：召唤亡灵时排除与自身同 id 的种族。",
+            "新怪：nurse（ナース，warrior 职）、nurse_white（白衣のナース，wizard 职，会 SpHealTouch）、nursedatta（ナースだったもの）、necromancer2（死者の代弁者）、mimic_greater（グレーターミミック）。",
+            "新能力 restore 分支：检查身体/精神元素列表中负基础值的元素，按 20 分/个加 tactics.P_Heal 评分。"
+          ]
+        },
+        {
+          "title": "大门与学校家具",
+          "points": [
+            "新类 TraitDoorBig / TraitDoorBigL / TraitDoorBigR：Cell.hasDoor 改为派生属性 traitDoor != null，RenderData.DrawRepeatTo 支持 skipRepeat（门高贴图）。",
+            "新区域 academy_roran（ローラン女学院）与学校家具：学校桌椅、衝立、跳び箱、人体解剖模型、床垫 1401/1402、ボールかご、脳標本、黒板消し。"
+          ]
+        },
+        {
+          "title": "模组分组与数值调整",
+          "points": [
+            "ModManager 新增 ModGroup 分组（新建/移动/解散/改色），语言包新增 mod_group_* 文案。",
+            "变异种额外特质上限 min(2 + LV/30, 20)。",
+            "ListFussableCharas 上限 8 → 7。"
+          ]
+        }
+      ]
+    },
+    {
+      "version": "EA 23.345",
+      "date": "2026-09-18",
+      "sections": [
+        {
+          "title": "遗物系统（新增）",
+          "points": [
+            "新增遗物（Relic）装备类别：专属槽位 slot 46（BodyCode.relic），戴在身上通过 DNA 继承素材特性。",
+            "首个遗物「宿卵」（relic_lesser，日文 宿卵）：宝石×1＋基因×1＋树脂×25，装饰台制作。",
+            "DNA 遗物化剔除规则：slot 类元素（硬编码）、noRelic 与 permaGene 标签（数据标签）。",
+            "获取途径在 EA 23.350 改为索林剧情（见 EA 23.350 节）。"
+          ]
+        }
+      ]
+    }
+  ]
+}

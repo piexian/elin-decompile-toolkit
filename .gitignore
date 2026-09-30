@@ -1,5 +1,9 @@
-# 运行脚本生成的产物，不进仓库
-/data/
+# 运行脚本生成的产物，不进仓库（data/ 下的源表除外，见下方例外）
+/data/lang/
+/data/things.jsonl
+/data/recipes.json
+/data/materials.json
+/data/versions/
 /src/
 /kb/
 /drafts/

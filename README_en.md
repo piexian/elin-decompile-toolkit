@@ -107,6 +107,7 @@ elin-decompile-toolkit/
 ├── AGENTS.md           repo conventions (auto-read by most agents)
 ├── README.md           this file's Chinese original
 ├── README_en.md        this file
+├── data/version_changes.json  version-change source table (rendered into the corpus)
 └── scripts/            11 Python scripts
 ```
 

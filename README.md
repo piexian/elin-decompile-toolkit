@@ -103,6 +103,7 @@ elin-decompile-toolkit/
 ├── SKILL.md            Agent 入口（frontmatter + 工作流 + 铁律 + 版本比对实战要点 + 踩坑记录）
 ├── AGENTS.md           项目约定，多数 Agent 会自动读取（关键位置表 / wiki 惯例 / 词条索引）
 ├── README.md           本文件
+├── data/version_changes.json  版本变动源表（结构化，build_corpus 渲染进语料）
 └── scripts/            11 个 Python 脚本
 ```
 
