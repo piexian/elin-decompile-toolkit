@@ -23,7 +23,26 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'kb', 'corpus')
 OUT = os.path.join(ROOT, 'kb', 'embed_ready')
-VERSION = 'EA 23.349'
+
+
+def detect_version():
+    """语块头部的版本号直接读游戏的 version.json，不再手填常量——
+    上一版忘了同步常量，23.350 的语块头还写着 23.349。"""
+    fallback = 'unknown'
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from steam_locate import find_game_dir
+        game = find_game_dir()
+        if game:
+            vj = os.path.join(game, 'version.json')
+            if os.path.isfile(vj):
+                return json.load(open(vj, encoding='utf-8')).get('versionText') or fallback
+    except Exception:
+        pass
+    return fallback
+
+
+VERSION = detect_version()
 
 # WebUI 的「分块大小」。段落必须比它略小，否则段落会被二次切分。
 CHUNK_SIZE = int(sys.argv[1]) if len(sys.argv) > 1 else 2048
