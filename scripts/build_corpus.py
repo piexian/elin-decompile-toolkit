@@ -19,6 +19,53 @@ def w(outdir, name, text):
 
 PLACEHOLDER = {'*r', '*', '-', '?', '　'}
 
+# 语料侧的待办/编辑状态过滤。只动 kb/ 里的拷贝，工作区的 drafts/notes 保持原样。
+TODO_SENT = re.compile(r'(?:待补充|有待补充|待考证|待补全|待完善|待更新|待重写)\s*[。.]?\s*$')
+TODO_WORD = re.compile(r'待补充|有待补充|待考证|待补全|待完善|待更新|待重写|待创建')
+STATUS_CELL = re.compile(r'\|\|\s*(?:待创建|已有|✅[^|]*|📝[^|]*|❌[^|]*)\s*$')
+SECTION_TODO = re.compile(r'^(=+)\s*待补充[^=]*\1\s*$')
+
+
+def sanitize_kb_doc(text):
+    """剔除 wiki 编辑状态：表格状态列、纯待办句、句尾待办从句、待补充章节。"""
+    out, dropped, lines = [], 0, text.split('\n')
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
+        m = SECTION_TODO.match(ln.strip())
+        if m:
+            # 待补充章节：标题连同其正文一并丢弃（到下一个同级或更高级标题）
+            level = len(m.group(1))
+            i += 1
+            while i < len(lines):
+                nxt = lines[i].strip()
+                if nxt.startswith('=') and len(nxt) - len(nxt.lstrip('=')) <= level:
+                    break
+                i += 1
+            dropped += 1
+            continue
+        stripped_cell = STATUS_CELL.sub('', ln)
+        if stripped_cell != ln:
+            dropped += 1
+            ln = stripped_cell
+        kw = TODO_WORD.search(ln)
+        if kw:
+            head = ln[:kw.start()]
+            # 待办从句前的最后一个分句分隔符；没有分隔符说明待办就是整句谓语 → 整行丢弃
+            pos = max(head.rfind('，'), head.rfind(','), head.rfind('：'),
+                      head.rfind(':'), head.rfind('、'))
+            prefix = head[:pos].rstrip() if pos > 0 else ''
+            body = prefix.removeprefix('* ').removeprefix('- ').strip()
+            if pos > 0 and len(body) >= 8 and not body.endswith(('的', '与', '和', '及', '等', '是')):
+                out.append(prefix.rstrip() + ('。' if not prefix.rstrip().endswith(('。', '.')) else ''))
+            else:
+                dropped += 1
+            i += 1
+            continue
+        out.append(ln)
+        i += 1
+    return '\n'.join(out), dropped
+
 
 def is_placeholder(v):
     return (v or '').strip() in PLACEHOLDER
@@ -104,9 +151,15 @@ def main():
         n += 1
     print('items:', n)
     # 3. 代码/笔记/草稿直接进语料(按类/按文件)
+    # notes 与 drafts 是 wiki 工作文档，带「待补充/待创建」之类的编辑状态；
+    # 嵌入语料里这些是噪音，拷贝时过一遍 sanitize_kb_doc，工作区原文件不动。
     import shutil
+    SKIP_NOTES = {'对标清单.md'}   # 站内缺口状态跟踪表，纯编辑状态，不进知识库
     missing = []
-    for src, dst in [('kb/src/classes', 'corpus/code'), ('kb/notes', 'corpus/notes'), ('kb/drafts', 'corpus/drafts')]:
+    stripped = 0
+    for src, dst, do_sanitize in [('kb/src/classes', 'corpus/code', False),
+                                  ('kb/notes', 'corpus/notes', True),
+                                  ('kb/drafts', 'corpus/drafts', True)]:
         s = os.path.join(ROOT, src.replace('/', os.sep))
         d = os.path.join(D, dst.replace('/', os.sep))
         if not os.path.exists(s):
@@ -115,8 +168,25 @@ def main():
             continue
         if os.path.exists(d):
             shutil.rmtree(d)
-        shutil.copytree(s, d)
-    print('code/notes/drafts copied' + (f'（缺 {", ".join(missing)}，对应语料为空）' if missing else ''))
+        os.makedirs(d, exist_ok=True)
+        for root, dirs, names in os.walk(s):
+            dirs[:] = [x for x in dirs if x != '__pycache__']
+            for fn in names:
+                sp = os.path.join(root, fn)
+                dp = os.path.join(d, os.path.relpath(sp, s))
+                os.makedirs(os.path.dirname(dp), exist_ok=True)
+                if do_sanitize and fn.endswith(('.md', '.txt')):
+                    if fn in SKIP_NOTES:
+                        stripped += 1
+                        continue
+                    text = open(sp, encoding='utf-8').read()
+                    clean, n = sanitize_kb_doc(text)
+                    stripped += n
+                    open(dp, 'w', encoding='utf-8', newline='\n').write(clean)
+                else:
+                    shutil.copy2(sp, dp)
+    print('code/notes/drafts copied' + (f'（缺 {", ".join(missing)}，对应语料为空）' if missing else '')
+          + (f'；语料侧剔除待办/状态 {stripped} 处' if stripped else ''))
 
 if __name__ == '__main__':
     main()
