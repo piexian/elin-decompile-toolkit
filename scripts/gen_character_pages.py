@@ -113,7 +113,7 @@ def drama_lines(cid):
             out.append(v)
     return out[:6]
 
-FILE2ID = {'缇克':'tyche','迪米塔斯':'demitas','波比':'poppy','拉斐尔':'raphael','索林':'sorin','VISHNU':'vishnu','穿布偶装的打工者':'parttimer_jure','赛特拉斯':'ineien','托兰':'guild_master_fighter','约格':'guild_master_mage','玛丽安':'guild_master_merchant','艾赫卡托尔':'ehekatl','机利亚':'adv_kiria','特菲拉':'vernis_boss','加雷斯':'doorman_wynan','斯塔莎':'stasha','雷托':'renton','莱布拉斯':'revlus','斯兰':'mapMerchant','乔南':'jonan','贾比':'xabi','埃夫隆德':'ephrond','贝里希':'barrich','盖罗克':'garokk','米拉尔':'miral','基尔巴德':'gilbert','艾露米纳雷':'eluminaire','卡多恩':'caldorn'}
+FILE2ID = {'缇克':'tyche','迪米塔斯':'demitas','波比':'poppy','拉斐尔':'raphael','索林':'sorin','VISHNU':'vishnu','穿布偶装的打工者':'parttimer_jure','赛特拉斯':'ineien','托兰':'guild_master_fighter','约格':'guild_master_mage','玛丽安':'guild_master_merchant','艾赫卡托尔':'ehekatl','机利亚':'adv_kiria','特菲拉':'vernis_boss','加雷斯':'doorman_wynan','斯塔莎':'stasha','雷托':'renton','莱布拉斯':'revlus','斯兰':'mapMerchant','乔南':'jonan','贾比':'xabi','埃夫隆德':'ephrond','贝里希':'barrich','盖罗克':'garokk','米拉尔':'miral','基尔巴德':'gilbert','艾露米纳雷':'eluminaire','卡多恩':'caldorn','摩安':'moyer'}
 
 def main():
     outdir = os.path.join(ROOT, 'drafts', 'characters')
@@ -126,7 +126,8 @@ def main():
         detail = row.get('detail', '')
         race_cn, job_cn, gender, feats, abils = parse_row(cid)
         lines = drama_lines(cid)
-        old_path = os.path.join(outdir, fn + '.txt')
+        os.makedirs(os.path.join(outdir, fn), exist_ok=True)
+        old_path = os.path.join(outdir, fn, fn + '.md')
         old = open(old_path, encoding='utf-8').read() if os.path.exists(old_path) else ''
         m = re.search(r'\| genderCn[ \t]*=[ \t]*(\S*)', old)
         lv = re.search(r'\| levelCn[ \t]*=[ \t]*(\S*)', old)

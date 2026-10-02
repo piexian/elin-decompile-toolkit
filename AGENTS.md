@@ -11,7 +11,7 @@ SKILL.md     agent entry point (frontmatter + workflows + iron rules + version-d
 AGENTS.md    this file
 README.md    human-facing install guide (Chinese)
 README_en.md human-facing install guide (English)
-scripts/     11 Python scripts (standard library only, no third-party dependencies)
+scripts/     14 Python scripts (standard library only, no third-party dependencies)
 data/version_changes.json  version-change source table, rendered into the corpus by build_corpus.py
 ```
 
@@ -23,6 +23,9 @@ data/version_changes.json  version-change source table, rendered into the corpus
 |---|---|---|
 | `data/lang/` | official Chinese language pack, 83 tables | `python scripts/lang_xlsx_to_json.py data/lang` |
 | `data/things.jsonl` `recipes.json` `materials.json` | items / recipes / materials | `python scripts/extract_things.py data` etc. |
+| `data/things_full.jsonl` `categories.json` `spawnlists.json` | full item fields / category tree / spawn lists | `python scripts/extract_thing_rows.py data` |
+| `data/charas_full.jsonl` `races.json` `jobs.json` | character rows / race & job stat blocks | `python scripts/extract_chara_rows.py data` |
+| `data/elements.jsonl` | element/enchant/skill table | `python scripts/extract_elements.py "" data` |
 | `src/Elin.decompiled.cs` | decompiled main DLL | `ilspycmd` + GBK→UTF-8 re-encode, see SKILL.md |
 | `kb/` | RAG corpus and AstrBot upload chunks | `python scripts/build_corpus.py` etc. |
 
@@ -34,6 +37,9 @@ Checked in (not generated): `data/version_changes.json` — the version-change s
 |---|---|
 | Main game DLL | `<game dir>/Elin_Data/Managed/Elin.dll` |
 | Binary game data | `<game dir>/Elin_Data/sharedassets0.assets` |
+| Character sprite atlas | `<game dir>/Package/_Elona/Texture/objs_C.png` — 128px cells, 32 per row, linear tile index from `charas_full.jsonl` `_tiles`; crop how-to in SKILL.md "Known pitfalls" |
+| Character portraits (dialog art) | `<game dir>/Package/_Elona/Portrait/UN_<chara id>.png`; a character with no file there has no portrait |
+| Book/reading-text files | `<game dir>/Package/<package>/Lang/<lang>/Text/Book/*.txt` (first line = `title,author,...`) |
 | Official Simplified Chinese language pack | `<game dir>/Package/_Lang_Chinese/Lang/CN/` |
 | Decompiled-code docs site (may lag the local version) | https://code.elin-modding.net/ |
 
