@@ -93,8 +93,7 @@ def main():
                 zh = (lang.get(cid) or {}).get('name') or ''
                 zh = zh if zh and not zh.startswith('*') else cid
                 outdir = os.path.join(ROOT, 'drafts', 'characters', zh)
-            if name is None:
-                name = 'Elin_Npc_Sprite_' + ''.join(w.capitalize() for w in cid.split('_'))
+            out_name = name or ('Elin_Npc_Sprite_' + ''.join(w.capitalize() for w in cid.split('_')))
         else:
             t = things.get(cid)
             if not t:
@@ -117,12 +116,11 @@ def main():
                 zh = (lang_t.get(cid) or {}).get('name') or ''
                 zh = zh if zh and not zh.startswith('*') else cid
                 outdir = os.path.join(ROOT, 'drafts', 'objects', zh)
-            if name is None:
-                name = 'Elin_Icon_' + ''.join(w.capitalize() for w in cid.split('_'))
+            out_name = name or ('Elin_Icon_' + ''.join(w.capitalize() for w in cid.split('_')))
         os.makedirs(outdir, exist_ok=True)
-        s.save(os.path.join(outdir, name + '.png'))
-        s.resize((s.width * 8, s.height * 8), Image.NEAREST).save(os.path.join(outdir, name + '_8x.png'))
-        print('OK', cid, rd, atlas_file, 'r%dc%d' % (row, col), '->', name, s.size)
+        s.save(os.path.join(outdir, out_name + '.png'))
+        s.resize((s.width * 8, s.height * 8), Image.NEAREST).save(os.path.join(outdir, out_name + '_8x.png'))
+        print('OK', cid, rd, atlas_file, 'r%dc%d' % (row, col), '->', out_name, s.size)
 
 
 if __name__ == '__main__':
