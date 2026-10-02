@@ -24,17 +24,26 @@ def load_xlsx(path):
     rows = []
     for r in re.findall(r'<row[^>]*>(.*?)</row>', sheet, re.S):
         vals = []
+        pos = 0
         for m in re.finditer(r'<c\b([^>]*?)(?:/>|>(.*?)</c>)', r, re.S):
             attrs, inner = m.group(1), m.group(2)
-            if inner is None:
+            # 23.351 起导出的 xlsx 省略空单元格，必须按 r="C3" 的列坐标回填，
+            # 否则空格后的所有列左移错位；无 r 属性的旧文件退回顺序填充
+            cm = re.search(r'\br="([A-Z]+)\d+"', attrs)
+            if cm:
+                idx = 0
+                for ch in cm.group(1):
+                    idx = idx * 26 + ord(ch) - 64
+                idx -= 1
+            else:
+                idx = pos
+            while len(vals) <= idx:
                 vals.append('')
-                continue
-            vm = re.search(r'<v>(.*?)</v>', inner, re.S)
-            if not vm:
-                vals.append('')
-                continue
-            v = vm.group(1)
-            vals.append(strs[int(v)] if 't="s"' in attrs else v)
+            vm = re.search(r'<v>(.*?)</v>', inner or '')
+            if vm:
+                v = vm.group(1)
+                vals[idx] = strs[int(v)] if 't="s"' in attrs else v
+            pos = idx + 1
         rows.append(vals)
     return rows
 
