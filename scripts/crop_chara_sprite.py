@@ -56,6 +56,7 @@ def main():
     outdir = None
     name = None
     trim = '--trim' in sys.argv
+    snow = '--snow' in sys.argv
     for a in sys.argv[1:]:
         if a.startswith('--outdir='):
             outdir = a.split('=', 1)[1]
@@ -83,7 +84,13 @@ def main():
         if c:
             rd = c['_idRenderData']
             atlas_file, cols, span = ATLAS[rd]
-            idx = (c['_tiles'] or c['tiles'])[0]
+            if snow:
+                arr = c.get('_tiles_snow') or c.get('tiles_snow')
+                if not arr:
+                    raise SystemExit('%s 没有冬装图块（tiles_snow 为空）' % cid)
+                idx = arr[0]
+            else:
+                idx = (c['_tiles'] or c['tiles'])[0]
             col, row = idx % cols, idx // cols
             atlas = Image.open(os.path.join(gdir, 'Package', '_Elona', 'Texture', atlas_file)).convert('RGBA')
             span = min(span, atlas.height // TILE - row)
@@ -93,7 +100,7 @@ def main():
                 zh = (lang.get(cid) or {}).get('name') or ''
                 zh = zh if zh and not zh.startswith('*') else cid
                 outdir = os.path.join(ROOT, 'drafts', 'characters', zh)
-            out_name = name or ('Elin_Npc_Sprite_' + ''.join(w.capitalize() for w in cid.split('_')))
+            out_name = name or ('Elin_Npc_Sprite_' + ''.join(w.capitalize() for w in cid.split('_')) + ('Snow' if snow else ''))
         else:
             t = things.get(cid)
             if not t:
