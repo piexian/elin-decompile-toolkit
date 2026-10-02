@@ -49,6 +49,7 @@ The game directory is located automatically by `scripts/steam_locate.py` (`ELIN_
 
 1. **Names must come from the official language pack in `data/lang/` — never self-translate.** External wikis (Ylvapedia etc.) only provide structural hints; keep the English/Japanese original marked "awaiting official translation" when no Chinese exists.
 2. **Mechanics conclusions must be grounded in decompiled code or game data.** Community wikis are leads only. Mark numbers that cannot be measured from data as "estimated".
+3. **Every wiki section carries a source annotation by default.** Each `==` / `===` section ends with an HTML comment naming where the content came from or what to search in the source — decompiled class and method, extracted table and row id, language-pack row and column, or the game file path. Write them unless the user asks for a page without annotations; the forms and the anchor list are in SKILL.md under "Writing wiki pages".
 
 ## Modifying this skill
 

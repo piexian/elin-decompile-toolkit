@@ -1,6 +1,6 @@
 ---
 name: elin-decompile-toolkit
-description: Extract and verify data from the game Elin (Unity) — decompile Elin.dll, parse the official Chinese language pack and binary game assets, diff game versions, and build a RAG knowledge base. Use when the user asks about Elin game mechanics, item/character names, official Chinese translations, recipe data, version changes, or wants a local LLM knowledge base from game data. Requires the game installed locally.
+description: Extract and verify data from the game Elin (Unity) — decompile Elin.dll, parse the official Chinese language pack and binary game assets, diff game versions, write wiki pages with per-section source annotations, and build a RAG knowledge base. Use when the user asks about Elin game mechanics, item/character names, official Chinese translations, recipe data, wiki articles, version changes, or wants a local LLM knowledge base from game data. Requires the game installed locally.
 ---
 
 # Elin Decompilation Research Toolkit
@@ -11,6 +11,30 @@ A set of Python scripts with zero third-party dependencies that extract official
 
 1. **Item/character names must come from the official language pack in `data/lang/` — never translate them yourself.** This holds even when consulting external wikis (Ylvapedia etc.): those sites only provide structural hints; every noun must be cross-checked against the official Chinese in the local language pack. If no Chinese exists, keep the English/Japanese original and mark it "awaiting official translation".
 2. **Every mechanics conclusion must be grounded in code (`src/Elin.decompiled.cs`) or data (`data/`).** Community wikis (kamigame/ylvapedia etc.) are leads only — their versions drift far from the live game. Mark numbers that cannot be measured from data as "estimated".
+
+## Writing wiki pages
+
+Every section of a wiki page ends with a source annotation written as a MediaWiki comment. The comment does not render, so it costs the reader nothing, but it tells whoever re-checks the page — a human editor or the next agent — exactly which class, table row, language file, or asset produced the text above it. Write these by default. Drop them only when the user explicitly asks for a page without source annotations.
+
+```
+== 获得方式 ==
+* 完成[[索林]]的遗物剧情后获得遗物槽位（EA 23.350 起），剧情结算时身上没有槽位会自动追加一个。
+* 在装饰台制作：[[宝石]] ×1 ＋ [[基因]] ×1 ＋ [[树脂]] ×25 → '''宿卵'''（relic_lesser，暂无官方中文）。
+<!-- 来源：槽位追加与「完成 into_darkness 任务自动赠送」两处逻辑 TraitSorin / RelicSlot（src/Elin.decompiled.cs，按类拆到 kb/src/classes/）；配方与材料数量 data/things_full.jsonl id=<宿卵> 的 recipe 段；译名 data/lang/Thing.json 同 id 的 name 列为 *r，保留日文原文 -->
+```
+
+Put the comment at the end of the section body, right before the next heading. A summary block at the top of the file is a useful supplement but never replaces the per-section comments.
+
+Write the anchor that would let someone reproduce the section, choosing the first form that applies:
+
+- **Mechanics and rules** — the class and method in the decompiled source, e.g. `Card.Decay`, `TraitBrewery`; after `split_decompiled.py` the file is `kb/src/classes/<Class>.cs`, in the single-file dump search the class name. Add the line range when you have it (`DNA.Relicize L113029`).
+- **Numbers, fields, tables** — the extracted table and the row key: `data/things_full.jsonl` `id=1050`, `data/charas_full.jsonl` `_index=251` (`_id=373`), `data/elements.jsonl`, `data/categories.json`, `data/jobs.json`.
+- **Names and text** — the language pack: `data/lang/Thing.json` `id=1050`, or the text file in the game (`Package/_Lang_Chinese/Lang/CN/Text/Book/advweek_1.txt`). Name the column you read, and say the entry is officially untranslated when the row is a `*r` placeholder or a shifted column.
+- **Images** — the file in the game plus the crop parameters (`Package/_Elona/Texture/objs_C.png` tile 782 → row 24 col 14).
+- **Computed numbers** — state the formula instead of the number alone, and mark it estimated: `<!-- 来源：属性 = race + job 直接相加（races.json norland + jobs.json bard），技能按 Element.GetSourceValue 等级缩放 → 推算 -->`.
+- **Several claims in one section** — one comment holding one line per claim, still a single comment.
+
+Sections that carry no sourced content (`== 导航 ==`, `== 参见 ==`, category tags) need no comment. `<!-- ... -->` is MediaWiki's comment syntax: it cannot nest and must not contain `--` inside, so keep one comment per section, on one line, and keep `来源` as the leading word so a grep for it lists every annotation in the page.
 
 ## Scripts
 
