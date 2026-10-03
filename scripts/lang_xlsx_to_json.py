@@ -9,17 +9,30 @@ import json
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 import zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
+def load_shared_strings(z):
+    """共享字符串表必须按 <si> 聚合——OOXML 的 <v> 索引对应 <si> 而非 <t>，
+    富文本 <si> 含多个 <r><t> 段，按 <t> 抓会让首个富文本之后的所有索引错位
+    （EA23.351 的 Thing.xlsx: 9319 个 si vs 9640 个 t，21 张表受影响）。
+    ET 同时完成 XML 实体解码。"""
+    if 'xl/sharedStrings.xml' not in z.namelist():
+        return []
+    ns = {'m': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+    root = ET.fromstring(z.read('xl/sharedStrings.xml'))
+    out = []
+    for si in root.findall('m:si', ns):
+        out.append(''.join(t.text or '' for t in si.iter('{%s}t' % ns['m'])))
+    return out
+
+
 def load_xlsx(path):
     z = zipfile.ZipFile(path)
-    strs = []
-    if 'xl/sharedStrings.xml' in z.namelist():
-        data = z.read('xl/sharedStrings.xml').decode('utf-8', 'ignore')
-        strs = re.findall(r'<t[^>]*>(.*?)</t>', data, re.S)
+    strs = load_shared_strings(z)
     sheet = z.read('xl/worksheets/sheet1.xml').decode('utf-8', 'ignore')
     rows = []
     for r in re.findall(r'<row[^>]*>(.*?)</row>', sheet, re.S):
