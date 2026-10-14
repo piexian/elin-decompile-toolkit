@@ -116,8 +116,6 @@ Scripts that need the game path auto-locate it: the `ELIN_GAME_DIR` env var wins
 
 ## First-time setup
 
-
-
 Prerequisites: Python 3.8+ and .NET SDK 8+. The game must be installed. Everything runs on the standard library **except** `crop_chara_sprite.py`, which needs Pillow — install it only if you intend to crop sprites:
 
 ```bash
