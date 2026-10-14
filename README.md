@@ -1,5 +1,7 @@
 # Elin 反编译考据工具箱
 
+> English version: [README_en.md](README_en.md)
+
 一套给 AI Agent 用的 [Agent Skill](https://skills.sh)，从本地安装的《Elin》提取官方数据并反编译源码：查物品/角色的官方中文译名、核对机制结论、比对游戏版本、构建本地 LLM 知识库。装上之后，Agent 回答 Elin 相关问题时会先查真实游戏数据，而不是凭印象或社区二手资料。
 
 纯 Python 标准库，**唯一例外**：`crop_chara_sprite.py`（从图集切角色像素小人）需要 Pillow，其余脚本零第三方依赖。不切图就不必装。
@@ -136,6 +138,7 @@ elin-decompile-toolkit/
 ├── SKILL.md            Agent 入口（frontmatter + 工作流 + 铁律 + 版本比对实战要点 + 踩坑记录）
 ├── AGENTS.md           项目约定，多数 Agent 会自动读取（关键位置表 / wiki 惯例 / 词条索引）
 ├── README.md           本文件
+├── README_en.md        英文版
 ├── data/version_changes.json  版本变动源表（结构化，build_corpus 渲染进语料）
 └── scripts/            19 个 Python 脚本（仅 crop_chara_sprite.py 需要 Pillow）
 ```
