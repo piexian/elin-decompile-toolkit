@@ -338,7 +338,14 @@ def main():
     report.append(('doc',) + write_batches(sections, 'doc', 'doc'))
 
     # ---- code：反编译类 ----
-    skipped_empty, skipped_pruned = build_code(report)
+    # 2026-10-14 用户定调：代码检索改走 AstrBot 插件 astrbot_plugin_self_file_search
+    # 直查本地拆分源码（src/elin-<版本>/），代码不再进嵌入库，embed_ready 只传 data/doc。
+    SKIP_CODE = True
+    if SKIP_CODE:
+        skipped_empty = skipped_pruned = 0
+        report.append(('code', 0, 0, 0))
+    else:
+        skipped_empty, skipped_pruned = build_code(report)
 
     # ---- 清单 ----
     total_c = sum(r[2] for r in report)
@@ -346,8 +353,9 @@ def main():
     lines = [
         '# AstrBot 上传清单',
         '',
-        f'游戏版本 **{VERSION}**。每个 `# 标题` 段落 = WebUI 的一个文本块，'
-        f'整目录 **{total_f} 个文件 / 约 {total_c} 块**，可以一次全量重建。',
+        f'游戏版本 **{VERSION}**。上传目录是 `kb/embed_ready/`（本清单在上传目录之外，'
+        f'不进知识库）。每个 `# 标题` 段落 = WebUI 的一个文本块，'
+        f'共 **{total_f} 个文件 / 约 {total_c} 块**，可以一次全量重建。',
         '',
         '| 文件前缀 | 上传文件数 | 段落数（≈嵌入块数） | 字符数 |',
         '|---|---|---|---|',
@@ -362,7 +370,7 @@ def main():
         '## WebUI 设置',
         '',
         f'- **分块大小设 {CHUNK_SIZE}、分块重叠 100**。语料段落都按 {SECTION} 字符打包，'
-        '一个段落正好一个块，不会被二次切分。**切分参数和本目录是配套的**：改了分块大小就要重跑 '
+        '一个段落正好一个块，不会被二次切分。**切分参数和上传目录是配套的**：改了分块大小就要重跑 '
         f'`python tools/build_embed_chunks.py <新的分块大小>`。',
         f'- 想更快：重跑 `python tools/build_embed_chunks.py 4096`，块数约 {total_c // 2}，'
         '但单块更大、检索更粗。mistral-embed 支持 8192 token，4096 字符不会超。',
@@ -373,11 +381,18 @@ def main():
         '## 剔除内容',
         '',
     ]
-    lines += [
-        f'- 渲染 / UI / 音频 / 网络 / 引擎设置类 **{skipped_pruned} 个**（见 `tools/build_embed_chunks.py` '
-        '的 `PRUNE_PREFIX` / `PRUNE_EXACT`，设成空即可全量嵌入）。',
-        f'- 空壳类（只有类声明没有实现）**{skipped_empty} 个**。',
-    ]
+    if SKIP_CODE:
+        lines += [
+            '- **代码语料自 EA 23.356 起停传**：源码检索走 AstrBot 插件 '
+            '`astrbot_plugin_self_file_search` 直查本地 `src/elin-<版本>/`，'
+            '嵌入库只放译名对照与数据语料。要恢复传代码把 `build_embed_chunks.py` 的 `SKIP_CODE` 改 False。',
+        ]
+    else:
+        lines += [
+            f'- 渲染 / UI / 音频 / 网络 / 引擎设置类 **{skipped_pruned} 个**（见 `tools/build_embed_chunks.py` '
+            '的 `PRUNE_PREFIX` / `PRUNE_EXACT`，设成空即可全量嵌入）。',
+            f'- 空壳类（只有类声明没有实现）**{skipped_empty} 个**。',
+        ]
     # 清单是给人看的操作说明，不进上传目录——上传目录里只能有语料本体
     manifest_path = os.path.join(os.path.dirname(OUT), 'MANIFEST.md')
     with open(manifest_path, 'w', encoding='utf-8') as f:
