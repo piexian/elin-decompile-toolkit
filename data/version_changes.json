@@ -1,12 +1,211 @@
 {
   "baseline": {
-    "version": "EA 23.350 Patch 1",
-    "versionInt": "0.23.350.1",
-    "buildDate": "2026-09-28",
+    "version": "EA 23.356 Patch 1",
+    "versionInt": "0.23.356.1",
+    "buildDate": "2026-10-13",
     "channel": "Nightly",
-    "syncedAt": "2026-10-01"
+    "syncedAt": "2026-10-14"
   },
   "versions": [
+    {
+      "version": "EA 23.356 Patch 1",
+      "date": "2026-10-14",
+      "sections": [
+        {
+          "title": "音乐家专长学歌机制（代码主改动）",
+          "points": [
+            "featPianist(1405) 新增学歌：演奏(241) 达 3/8/25/36 级自动习得 6750 子守唄 / 6752 勇気の歌 / 6754 石ころの歌 / 6753 おわりの歌（ElementContainerCard.TryLearn）；演奏的 levelBonus 面板显示同样只在持有音乐家时生效（Element.CheckLevelBonus 加 owner.HasBase(1405) && id==241 条件）。",
+            "TryLearn 语义反转重写：条件取反后，已学会且达标时把该能力潜能保底 vPotential=1；ElementContainer.Learn 学到非库存型能力时潜能同样保底 1。",
+            "CharaAbility.Add/Remove 新增 permanent 参数：permanent 学习时 vPotential<0 先回 0、≤0 再抬到 1；Remove(permanent:true) 不再把潜能压回 -1。法里斯(farris)剧情学石ころの歌(6754) 改 permanent:true。",
+            "featPianist geneSlot 1→-1：音乐家专长退出基因槽。",
+            "大门音效参数化：TraitDoorBig 的 idSound 从写死 door3 改 GetParam(1)；源表 bigdoor1L/1R trait 补第二参数 door3，新增变体 bigdoor2L/2R（默认材质 granite、value 3500）带 door4，bigdoorframe2L/2R（window 类、value 2400）。",
+            "BGM 播放列表随机：Map config 新增 [JsonProperty] shufflePL，BGM 选择窗口底部加 Shuffle on/off 按钮，Zone 激活时应用 map.plDay.shuffle。",
+            "皮肤装饰自定义：LayerSkinDeco 支持读 CorePath.custom/Deco 下的 png（名称以 _ 开头时 id=0 按 name 匹配），SkinDecoActor 加空引用防护与 Refresh(editing:false)。",
+            "Point.ListCards/ListCharas/ListVisibleCards 等系列改为每次返回新 List（删除 static listCard/listChara 复用缓存），全库调用方相应去掉 .Copy()/.ToList()（约 20 处，行为等价的性能重构）。",
+            "杂项：priest 初始虔诚(1407) 1→2 级；坚固宝箱(1148/1171) LV 1→12；猫(chara 30) 冬装新增 tile 2529/2629；Msg 台词 ToUpperFirst→ToSentenceCase；AI_Shear 文案加空格；CoreDebug F4 加千次 ModExp(241,1000) 调试；存档迁移加 version.IsBelow(0,23,356) 空占位。"
+          ]
+        },
+        {
+          "title": "数据与语言包",
+          "points": [
+            "Thing +4：bigdoor2L/2R、bigdoorframe2L/2R（均无官方中文，JP 大扉/大扉の枠）。",
+            "Chara +1：ojomaton（お嬢マトン / young ladymaton，LV49、roran+pianist）——仅源表与语言包预注册，TryFuse 融合映射仍未实装。",
+            "General +1：shufflePL（无中文）。CN 列零变化。",
+            "EN 列微调：241 演奏 levelBonus_EN 补 3,SongSleep/8,SongValor/25,SongPebble/36,SongEnd（与音乐家机制配套）；boots_shiawase→Elevating Shoes；2700 Energy Conservation 去尾空格；littleOne 系台词标点补全。",
+            "value 源表第四次大重算：2589 行仅 value 变化（23351:969 / 23353:288 / 23354:971 之后），继续执行「Nightly 不做数值页勘误，等 Stable 一次核对」。",
+            "materials/races/categories/spawnlists/zones/recipes 零变化。"
+          ]
+        }
+      ]
+    },
+    {
+      "version": "EA 23.355",
+      "date": "2026-10-11",
+      "sections": [
+        {
+          "title": "Nightly→Stable 定版：代码与数值零变化",
+          "points": [
+            "反编译 diff 仅 6 行程序集版本元数据（0.23.355.0+Stable / EA 23.355 / Stable 通道），229452 行中无真实代码改动。",
+            "things_full(2594)/charas_full(603)/races/jobs/elements/materials/recipes/categories/spawnlists 与 23354 快照逐文件一致——2353/2354 的 value 抖动止于 23354，Stable 定版未再重算，已发布数值页无需按 Stable 勘误。",
+            "新坑：Git Bash 直连重定向 ilspycmd 输出落盘为 cp936，GBK 编不出的字符（✓♪♥㎢省略号）写出时即被替换成 ?，产生 12 处伪 diff；断言无 U+FFFD 查不出（? 是合法 ASCII）。解法：批处理先 chcp 65001 再跑 ilspycmd（输出真 UTF-8），并断言已知特殊字符存活。"
+          ]
+        },
+        {
+          "title": "语言包补官方中文 17 处",
+          "points": [
+            "beholder 官方中文改名：凝视者→U-388 名称抹除个体（中文用「抹除」、日文用「抹消」）；paint_living2 补中文名「徘徊的绘画」。",
+            "Thing 1405–1411 name+unit 补齐：救生椅/体重秤/身高测量仪/学校窗户/视力检查表/日历×2；book_death、book_black 量词「本」、unknown=#randomBook。",
+            "Game/General 文本：noBinoFound（背包中没有双筒望远镜。）、hotActionBinocular（使用背包中的双筒望远镜）、fixes 故障检测→故障检修、timeSimulation 改为「模拟据点时间流逝」、weightScale #2 kg / heightMeasure #2 cm。"
+          ]
+        }
+      ]
+    },
+    {
+      "version": "EA 23.354",
+      "date": "2026-10-10",
+      "sections": [
+        {
+          "title": "存档迁移修复",
+          "points": [
+            "旧存档加载时 FixElement(pc, 1421/6904)：重算玛那身躯(1421)基础值与摸头(6904)能力负潜能归零；新增 CharaGenes.CountDNA 支持按基因重算。"
+          ]
+        },
+        {
+          "title": "黑历史笔记收紧",
+          "points": [
+            "随机范围收紧为玩家势力(IsPCFaction)独特角色且排除机械之神种族；同角色同已读状态才可堆叠（CanStackTo）；非索琳版定价 20→50 票。",
+            "官方英文名修正：death note→Death Note、black history→Dark History。"
+          ]
+        },
+        {
+          "title": "信仰能力与其他修复",
+          "points": [
+            "CharaAbility.Has：PC 信仰赋予的元素能力也判为持有。",
+            "Chara.SetFeat 改用 ValueWithoutLink 基准，防装备链接值污染 feat 基础值。",
+            "Drama 扣物扣足即停（原 continue 多扣）；体重秤/身高计 23353 写反的文案互换修正；beholder 改名 U-388 名称抹消個体（中文凝视者不变）。",
+            "新物品 1410/1411 カレンダー（挂墙日历两变体，无中文无配方）；死亡笔记掉率翻倍（死神の使い 1/5、リーパー 1/50）；Eureka 新增雪地图。",
+            "value 再次重算约 950 行（junk 170 行）——Nightly 期间连续两晚抖动，数值页勘误应等 Stable 一次性核对。"
+          ]
+        }
+      ]
+    },
+    {
+      "version": "EA 23.353",
+      "date": "2026-10-09",
+      "sections": [
+        {
+          "title": "召唤物可留尸体",
+          "points": [
+            "Chara.SetSummon 新增 dropCorpse 参数，置 CINT.isSummonDropCorpse(136)；Die() 召唤物分支改为 isSummon && !GetBool(136) 才消失，置标志则正常死亡留尸体。",
+            "三个调用点：护送任务释放目标（60 回合后留尸体）、奇怪的雕像生成的角色、怪画生成的画中人（死亡留尸体）。",
+            "怪画生成 50/50 在 paint_living / paint_living2（新怪物，phantom/wizard LV24 法系：弱化/即死/沉默/毒瘴）之间选择。"
+          ]
+        },
+        {
+          "title": "索琳商店",
+          "points": [
+            "TraitSorin 新增 CostRerollShop=2：曼德拉干商店可花 2 影响力刷店（此前 Money3 商人刷店价为 0 不可刷）。",
+            "黑历史笔记多角色化：索琳版已存在/已售时改为上架随机独特角色的黑历史笔记；配套定价非索琳版 20 根、索琳版 100 根曼德拉干（Card.GetPrice Money3）。"
+          ]
+        },
+        {
+          "title": "NPC 闲置自疗与演奏会削弱",
+          "points": [
+            "AI_Idle：非大地图、魔>0、HP<60% 时会喝背包里的治疗药水或贴绷带（GetHealAction 实现者仅 TraitDrink 治疗药水与绷带两类）。",
+            "QuestMusic：演奏会 partyLv 由 1+rnd(演奏/10) 改为 /25，评分触顶需演奏 ≥250（原 ≥100），演奏会评分削弱。"
+          ]
+        },
+        {
+          "title": "学校家具第二弹与新热键",
+          "points": [
+            "新物品 1405-1409（全部无官方中文）：referee chair 審判台（钢锭×4+椅子，金属厂）、weighing scale 体重計（TraitWeightScale）、height measure 身長計（TraitHeightMeasure）、school window 学校の窓（木板×2+玻璃×5，玻璃厂）、eye test chart 視力検査表。",
+            "体重秤/身高计：踩上去由家具报告角色体重（weightScale）/身高（heightMeasure）。",
+            "新热键 HotItemActionBinocular：使用背包中的双眼鏡（无则提示 noBinoFound）。"
+          ]
+        },
+        {
+          "title": "数据与语言包",
+          "points": [
+            "死神の使い loot +死亡笔记 1/10、リーパー +1/100（死亡笔记进入常规掉落）。",
+            "棚/地袋/頑丈な宝箱加入 exotic（舶来品）家族并新增 exotic 配方；recipes 918→923。",
+            "value 重算 288 行（家具系，同 23351 模式，疑似导出工具重算）。",
+            "语言包 +10 条全部无官方中文；races/jobs/categories/spawnlists/elements/materials 零变化。"
+          ]
+        }
+      ]
+    },
+    {
+      "version": "EA 23.352 Patch 1",
+      "date": "2026-10-07",
+      "sections": [
+        {
+          "title": "投掷结算的目标保护",
+          "points": [
+            "ActThrow 在投掷攻击结算前保存 Act.TC/Act.CC，结算后写回，再做 TraitErohon 追击、DoHostileAction 与训练假人判定。Act.TC/Act.CC 是 Act 上的 static 字段（AttackProcess 内部用同名实例字段遮蔽）；已确认可达的改写点是 Chara.DoHostileAction 在潜行被发现并触发嵌套投掷时写 Act.TC = chara。修复后投掷链路不再读到被换掉的目标。",
+            "RenderRow.SetRenderData 对 colorType 加空值防护（colorType?.Split('/')），为 null 时跳过 alt/random/dye 判定而非抛 NullReferenceException——随包数据里 colorType 从不为 null，属给 mod 数据的预留防护。"
+          ]
+        },
+        {
+          "title": "区域地图与大门",
+          "points": [
+            "Zone.Activate 在 IsRegion 时除了清 decal，还会清零 cell._bridge 与 cell._bridgeMat：区域地图不再残留桥面数据。",
+            "大门 bigdoor1R（EN great door）的落地阴影参数调整（shadowX 6→12、shadowY 4→10、shadowRX −16→−12、shadowRY 2→10），同族 bigdoor1L 与普通门未动。",
+            "语言包 83 张表一字未改；物品/角色/材质/配方/刷取表/元素表除上述一行 pref 外零变化。"
+          ]
+        }
+      ]
+    },
+    {
+      "version": "EA 23.352",
+      "date": "2026-10-05",
+      "sections": [
+        {
+          "title": "演奏任务溢出防护",
+          "points": [
+            "演奏会（ZoneEventMusic.Spawn）生成成员的等级放大改为 long 运算并 clamp 到 99999999，防止 partyLv 极大时 int 溢出。",
+            "Chara 类新增常量 LevelLimit = 99999999。",
+            "演奏任务的触发判定与队伍等级掷骰改用 ValueWithoutLink 读演奏技能(241)——装备附魔链接与全体生效附魔的加成不再计入，只看角色自身面板。"
+          ]
+        },
+        {
+          "title": "数据与语言包",
+          "points": [
+            "专长「血之牵绊」(1249) 新增 noRelic 标签：不能再被抽成遗物 DNA。noRelic 全表 7 项、permaGene 2 项。",
+            "语言包 General 新增 3 条设置文案：timeSimulation（据点时间流逝模拟，代码暂无引用）、maxSleepSimHours、maxSimBases。",
+            "物品/角色/材质/配方/生成表全部零变化；元素表仅上述 noRelic 一处与 FieldAlert 英文名拼写修正。"
+          ]
+        }
+      ]
+    },
+    {
+      "version": "EA 23.351",
+      "date": "2026-10-03",
+      "sections": [
+        {
+          "title": "索琳商店与法术书定价",
+          "points": [
+            "索琳商店上架的治疗法术书由 SpHealJure(8406) 换成 SpHealEris(8404)。",
+            "Card.GetPrice 的 Money3 分支：法术书 8404 定价 2 干曼德拉草，9155 仍为 1（case 键从 \"spellbook\" 改为 \"372\"）。"
+          ]
+        },
+        {
+          "title": "任务与 NPC 行为修正",
+          "points": [
+            "NPC 待机读书不再阅读死亡笔记与黑历史笔记（原版 NPC 会读死亡笔记并触发死亡）。",
+            "死亡笔记处决目标判空，且不再误杀玩家。",
+            "法术书充能为空时阅读失败不再扣除充能。",
+            "QuestMusic（演奏任务）平衡下调：目标分系数从 (100+partyLv×50)/100 改为 (100+Min(partyLv,10)×10)/100；白金币奖励改为随队伍等级放大 ×(100+Min(partyLv,20)×50)/100。"
+          ]
+        },
+        {
+          "title": "数值与设置",
+          "points": [
+            "970 个物品价值调整，集中在家具系（支架/废品/室外用品/装饰/盆栽等），倍率 0.68~1.48，无统一系数——更像导出工具重算而非策划平衡。",
+            "设置新增两个滑条：maxSleepSimHours（睡眠模拟小时上限）、maxSimBases（同时模拟据点数）。"
+          ]
+        }
+      ]
+    },
     {
       "version": "EA 23.350 Patch 1",
       "date": "2026-09-28",
