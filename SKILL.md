@@ -36,6 +36,35 @@ Write the anchor that would let someone reproduce the section, choosing the firs
 
 Sections that carry no sourced content (`== 导航 ==`, `== 参见 ==`, category tags) need no comment. `<!-- ... -->` is MediaWiki's comment syntax: it cannot nest and must not contain `--` inside, so keep one comment per section, on one line, and keep `来源` as the leading word so a grep for it lists every annotation in the page.
 
+## Uploading images to the wiki
+
+`[[File:...]]` stays a red link until the file is actually uploaded, so images are part of finishing a page, not an optional extra. The site publishes its rules at <https://elin.huijiwiki.com/wiki/MediaWiki:Uploadfiles-info>; the Chinese-language help summary lives in the maintainer workspace at `notes/图片上传规范.md`.
+
+The site's own preference is to download the image from the matching page on the English wiki and keep its name, so you do not end up with a second copy of a file somebody already uploaded.
+
+Every file needs a category, otherwise other editors cannot find it. Add it from the file page through the batch-description panel at the bottom right; in a batch you type only the category name, such as `Sprite` or `立绘`, not `[[分类:Sprite]]`.
+
+| File type | Category |
+|---|---|
+| Character sprite (pixel figure) | `Sprite` |
+| Character portrait / dialog art | `立绘` |
+| Ability icon | `能力` |
+| Spell icon | `魔法` |
+| Element icon (fire, cold, nerve, …) | `领域` |
+| Item icon | `物品` |
+| Background (in-game UI and so on) | `背景` |
+| The protagonist's 16-direction walk cycle | `PCC` |
+| Steam achievement art | `成就` |
+
+Naming rules:
+
+- Portraits come out of `<game dir>/Package/_Elona/Portrait/`; upload them under the file's own name (`UN_<chara id>.png`). The English wiki's name is accepted too.
+- Sprites must never be screenshots. Export them from the atlas (`crop_chara_sprite.py`, see "Known pitfalls") or download them from the English wiki. A screenshot drags the UI background along and carries the wrong pixel scale.
+- Names should say what the file is. `截图10395781826482364.jpg` gets deleted; `Elin_Npc_Sprite_Moyer.png` survives. English and Chinese names are both fine, mojibake is not.
+- Local `_8x` previews stay local: the wiki scales pixel art in place with `{{像素图放大|[[File:x.png|240px]]}}`, so uploading an enlarged copy only adds a redundant file.
+
+After overwriting an existing file, check the pages that use it and confirm they still render — the size arguments in `[[File:...|150px]]` and the `{{像素图放大}}` template both depend on the pixel dimensions of the file itself.
+
 ## Scripts
 
 | Script | Purpose | Invocation |
