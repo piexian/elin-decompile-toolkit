@@ -11,7 +11,7 @@ SKILL.md     agent entry point (frontmatter + workflows + iron rules + version-d
 AGENTS.md    this file
 README.md    human-facing install guide (Chinese)
 README_en.md human-facing install guide (English)
-scripts/     14 Python scripts (standard library only, no third-party dependencies)
+scripts/     19 Python scripts (standard library only; crop_chara_sprite.py additionally needs Pillow)
 data/version_changes.json  version-change source table, rendered into the corpus by build_corpus.py
 ```
 
@@ -26,7 +26,9 @@ data/version_changes.json  version-change source table, rendered into the corpus
 | `data/things_full.jsonl` `categories.json` `spawnlists.json` | full item fields / category tree / spawn lists | `python scripts/extract_thing_rows.py data` |
 | `data/charas_full.jsonl` `races.json` `jobs.json` | character rows / race & job stat blocks | `python scripts/extract_chara_rows.py data` |
 | `data/elements.jsonl` | element/enchant/skill table | `python scripts/extract_elements.py "" data` |
-| `src/Elin.decompiled.cs` | decompiled main DLL | `ilspycmd` + GBK→UTF-8 re-encode, see SKILL.md |
+| `src/Elin.decompiled.cs` | decompiled main DLL | `ilspycmd -r` + encoding sniff (utf-8-sig, fall back to cp936), see SKILL.md |
+| `data/zones_full.json` | SourceZone rows (zones / towns / dungeons) | `python scripts/extract_zone_rows.py data` |
+| `data/quests_full.json` | SourceQuest rows (quest definitions) | `python scripts/extract_quest_rows.py data` |
 | `kb/` | RAG corpus and AstrBot upload chunks | `python scripts/build_corpus.py` etc. |
 
 Checked in (not generated): `data/version_changes.json` — the version-change source table rendered into the corpus. Add curated knowledge entries under `data/knowledge/*.json` with the same schema.
@@ -42,6 +44,8 @@ Checked in (not generated): `data/version_changes.json` — the version-change s
 | Book/reading-text files | `<game dir>/Package/<package>/Lang/<lang>/Text/Book/*.txt` (first line = `title,author,...`) |
 | Official Simplified Chinese language pack | `<game dir>/Package/_Lang_Chinese/Lang/CN/` |
 | Decompiled-code docs site (may lag the local version) | https://code.elin-modding.net/ |
+| Chinese-language Elin wiki (target of the drafts) | https://elin.huijiwiki.com/ |
+| Wiki image-upload rules (categories, naming) | https://elin.huijiwiki.com/wiki/MediaWiki:Uploadfiles-info |
 
 The game directory is located automatically by `scripts/steam_locate.py` (`ELIN_GAME_DIR` env var first, then the Steam registry + `libraryfolders.vdf` + `appmanifest_2135150.acf`); run `python scripts/steam_locate.py` to verify on its own.
 
@@ -50,6 +54,7 @@ The game directory is located automatically by `scripts/steam_locate.py` (`ELIN_
 1. **Names must come from the official language pack in `data/lang/` — never self-translate.** External wikis (Ylvapedia etc.) only provide structural hints; keep the English/Japanese original marked "awaiting official translation" when no Chinese exists.
 2. **Mechanics conclusions must be grounded in decompiled code or game data.** Community wikis are leads only. Mark numbers that cannot be measured from data as "estimated".
 3. **Every wiki section carries a source annotation by default.** Each `==` / `===` section ends with an HTML comment naming where the content came from or what to search in the source — decompiled class and method, extracted table and row id, language-pack row and column, or the game file path. Write them unless the user asks for a page without annotations; the forms and the anchor list are in SKILL.md under "Writing wiki pages".
+4. **Uploaded files follow the site's naming and category rules.** A `[[File:...]]` link stays red until the file exists, so images ship with the page. Sprites are cropped from the atlas (never screenshotted), names say what the file is, and every upload gets its category — `Sprite`, `立绘`, `能力`, `魔法`, `领域`, `物品`, `背景`, `PCC`, or `成就`. The full table and the naming rules are in SKILL.md under "Uploading images to the wiki".
 
 ## Modifying this skill
 
