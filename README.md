@@ -12,17 +12,29 @@ pip install Pillow    # 仅 crop_chara_sprite.py 需要；装到实际运行脚�
 
 前置：本地已安装《Elin》（Steam 版会自动定位游戏目录，非 Steam 版用环境变量 `ELIN_GAME_DIR` 指定）。要跑反编译还需要 .NET SDK 8+ 和 `ilspycmd`。
 
+### 方式零：不装，直接用
+
+只想查一次数据、不想往 skills 目录里放东西时，可以让 CLI 把 skill 拉到临时目录直接用：
+
+```bash
+npx skills use "https://github.com/piexian/elin-decompile-toolkit" --skill "elin-decompile-toolkit" > skill.txt
+```
+
+输出很长，重定向到文件再读。末尾会给出支撑文件下载到哪个目录，脚本从那个目录直接跑即可——脚本靠自身位置推导工作区根目录，放哪儿都能跑。
+
 ### 方式一：skills CLI（推荐）
 
 ```bash
 npx skills add piexian/elin-decompile-toolkit
 ```
 
-CLI 会列出检测到的 agent 让你勾选（Claude Code / Codex / Cursor / Gemini CLI / OpenCode 等二十来个），主副本装到 `.agents/skills/`，其余目录建符号链接。常用参数：
+CLI 会列出检测到的 agent 让你勾选（Claude Code / Codex / Cursor / Gemini CLI 等六十来个），主副本装到 `.agents/skills/`，其余目录建符号链接。常用参数：
 
 ```bash
 npx skills add piexian/elin-decompile-toolkit -g      # 装到全局而不是当前项目
-npx skills add piexian/elin-decompile-toolkit -a claude-code -a codex
+npx skills add piexian/elin-decompile-toolkit -a zcode -a codex   # 只装给指定 agent
+npx skills add piexian/elin-decompile-toolkit -a '*'  # 装给 CLI 已知的全部 agent（实测 55 个目录）
+npx skills add piexian/elin-decompile-toolkit --copy  # 复制文件而不是建符号链接
 npx skills add piexian/elin-decompile-toolkit -y      # 非交互，CI/Agent 里用
 ```
 
@@ -36,7 +48,7 @@ npx skills add piexian/elin-decompile-toolkit -y      # 非交互，CI/Agent 里
 |---|---|---|
 | 通用（skills CLI 的主副本位置） | `~/.agents/skills/` | `.agents/skills/` |
 | Claude Code | `~/.claude/skills/` | `.claude/skills/` |
-| Codex | `~/.codex/skills/` | `.codex/skills/` |
+| Codex | `~/.agents/skills/`（与通用目录共用） | `.agents/skills/` |
 | ZCode | `~/.zcode/skills/` | `.zcode/skills/` |
 | Cursor / 其他读 SKILL.md 的 agent | 参见其文档 | 参见其文档 |
 

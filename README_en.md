@@ -14,17 +14,29 @@ pip install Pillow    # only crop_chara_sprite.py needs it; install into the int
 
 Prerequisites: Elin installed locally (Steam installs are located automatically; for non-Steam copies set the `ELIN_GAME_DIR` environment variable). Decompiling additionally needs .NET SDK 8+ and `ilspycmd`.
 
+### Option 0: no install, just use it
+
+When you want one lookup without putting anything in a skills directory, let the CLI fetch the skill into a temp directory:
+
+```bash
+npx skills use "https://github.com/piexian/elin-decompile-toolkit" --skill "elin-decompile-toolkit" > skill.txt
+```
+
+The output is long — redirect it to a file and read that. It names the directory the supporting files were downloaded to; run the scripts from there, since they derive the workspace root from their own location and work from anywhere.
+
 ### Option 1: skills CLI (recommended)
 
 ```bash
 npx skills add piexian/elin-decompile-toolkit
 ```
 
-The CLI lists the agents it detected for you to pick (Claude Code / Codex / Cursor / Gemini CLI / OpenCode and about twenty more); the master copy goes into `.agents/skills/` and the other directories get symlinks. Useful flags:
+The CLI lists the agents it detected for you to pick (Claude Code / Codex / Cursor / Gemini CLI and about sixty more); the master copy goes into `.agents/skills/` and the other directories get symlinks. Useful flags:
 
 ```bash
 npx skills add piexian/elin-decompile-toolkit -g      # global instead of project-local
-npx skills add piexian/elin-decompile-toolkit -a claude-code -a codex
+npx skills add piexian/elin-decompile-toolkit -a zcode -a codex   # only the named agents
+npx skills add piexian/elin-decompile-toolkit -a '*'  # every agent the CLI knows about (55 directories, measured)
+npx skills add piexian/elin-decompile-toolkit --copy  # copy files instead of symlinking
 npx skills add piexian/elin-decompile-toolkit -y      # non-interactive, for CI / agent runs
 ```
 
@@ -38,7 +50,7 @@ Copy the whole `elin-decompile-toolkit/` directory into your agent's skills dire
 |---|---|---|
 | Universal (skills CLI master copy) | `~/.agents/skills/` | `.agents/skills/` |
 | Claude Code | `~/.claude/skills/` | `.claude/skills/` |
-| Codex | `~/.codex/skills/` | `.codex/skills/` |
+| Codex | `~/.agents/skills/` (shares the canonical directory) | `.agents/skills/` |
 | ZCode | `~/.zcode/skills/` | `.zcode/skills/` |
 | Cursor / others that read SKILL.md | see their docs | see their docs |
 

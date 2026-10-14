@@ -7,26 +7,43 @@ description: Extract and verify data from the game Elin (Unity) — decompile El
 
 A set of Python scripts — standard library only, with the single exception of `crop_chara_sprite.py`, which needs Pillow — that extract official data from a locally installed copy of Elin and decompile its source: for writing wiki pages, answering mechanics questions, diffing game versions, and building an LLM knowledge base. Every script derives the workspace root from its own location, so the folder can live anywhere.
 
-## Installing this skill (for the agent reading this)
+## Getting this toolkit (for the agent reading this)
 
-If you are an AI agent and the user asks you to install, update or re-install this skill, do not invent a path — this file was written for several agents and the directory differs per agent:
+You are probably reading this because `npx skills use` fetched it into a temporary directory, and that directory is already enough — this toolkit is a folder of Python scripts that run from wherever they sit, with no install step. Check whether you already have such a directory:
+
+- if your instructions named a supporting-files directory, **work from it directly** and skip the rest of this section
+- otherwise, or if you need the toolkit to persist across sessions, fetch or install it as below
+
+**Run without installing.** Prints the skill to stdout and downloads the supporting files to a temp directory, which it names at the end. Redirect to a file first and read that, since the output is long:
+
+```bash
+npx skills use "https://github.com/piexian/elin-decompile-toolkit" --skill "elin-decompile-toolkit" > /tmp/elin-skill.txt
+```
+
+Resolve every relative path in this file — `scripts/`, `data/` — against that downloaded directory, not against the user's project and not against an installed copy.
+
+**Install for reuse** when the user asks for it, or when you want the toolkit available in later sessions:
+
+```bash
+npx skills add piexian/elin-decompile-toolkit -g -y -a <agent> --copy
+```
+
+`-a` takes an agent name (`zcode`, `claude-code`, `codex`, …), or `*` for every agent the CLI knows about — note that `*` is the full registry, not the agents detected on this machine, so it writes a copy into every one of those directories (55 at the time of writing); name an agent unless the user wants all. `--copy` writes real files instead of symlinks, which keeps each agent's copy independent.
 
 | Agent | Global skills directory |
 |---|---|
 | Claude Code | `~/.claude/skills/` |
-| Codex | `~/.codex/skills/` |
+| Codex | `~/.agents/skills/` (shares the canonical directory) |
 | ZCode | `~/.zcode/skills/` |
 | Generic `SKILL.md` readers (Cursor, …) | see that agent's documentation |
 
-The canonical copy lives at `~/.agents/skills/elin-decompile-toolkit/`; other agents' directories usually hold symlinks to it. Before installing, list the existing skills directories and report what is already there. Then copy (or symlink) this whole folder so that `SKILL.md` and `scripts/` stay siblings:
+To install without Node.js, copy this whole folder instead, so that `SKILL.md` and `scripts/` stay siblings:
 
 ```bash
-npx skills add piexian/elin-decompile-toolkit   # when Node.js is available
-# otherwise, from the folder containing this SKILL.md:
 cp -r . ~/.zcode/skills/elin-decompile-toolkit/
 ```
 
-Verify afterwards that `~/.zcode/skills/elin-decompile-toolkit/SKILL.md` and `.../scripts/steam_locate.py` both exist — the scripts locate the workspace from their own path, so a shuffled layout makes every one of them fail. Never partially copy: `scripts/` is not optional.
+**Verify before relying on it**, whichever route you took: confirm that `SKILL.md` and `scripts/steam_locate.py` exist in the same directory you are about to run from, then run `python scripts/steam_locate.py` and check it prints the game path. The scripts locate the workspace from their own path, so a shuffled or partial layout — `scripts/` is not optional — makes every one of them fail.
 
 ## Two iron rules (read before drawing any conclusion)
 
