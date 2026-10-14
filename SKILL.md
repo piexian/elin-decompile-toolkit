@@ -131,6 +131,10 @@ Taken from a real diff, EA 23.345 → 23.349 (four nightly batches):
 - **Language-pack deltas are the fastest index of new content**: `Package/_Lang_Chinese/Lang/CN/update.txt` lists each table's latest row count; diff it against the previous extraction (that update: Thing 2514→2585, Element 1075→1122, Chara 593→598, Category 140→141).
 - Write conclusions so they can be re-verified: anchor them to class names and behavior, e.g. "`ConTimeStop.ConsumeTurn` returns `!owner.HasElement(433)` when `Master != owner`, so a target with element 433 keeps acting". Keep the Japanese/English original for officially untranslated entries instead of inventing a translation.
 
+- **`value` churns nightly without any code change** (23.351: 969 rows, 23.353: 288, 23.354: 971, 23.356: 2589 — the same rows rewritten across builds). Mass value-only diffs are an export-tool recalculation, not balance design: never derive a mechanic from them, and refresh published wiki value tables only once a **Stable** build lands, not per nightly. Confirmed 2026-10-11: the Stable promotion (23.355) shipped **zero code changes and zero value changes** vs 23.354 Nightly — the churn settles at promotion, so the last Nightly's values are final.
+- **A Stable promotion build can be a near no-op**: 23354 → 23355's only decompiled diff was 6 lines of assembly version metadata, yet the language pack still gained 17 official-Chinese fills (renames included). Don't skip the data pipeline just because the code diff is empty.
+- **Summons can leave corpses since EA 23.353**: `Chara.SetSummon(duration, dropCorpse)` + `CINT.isSummonDropCorpse` (136); `Die()` still vanishes summons unless the flag is set. Callers that opted in: escort-quest targets on release, `TraitStrangeStatue` spawns, and `TraitStrangePainting`'s living paintings (now 50/50 `paint_living` / `paint_living2`).
+
 ## Building an AstrBot knowledge base
 
 ```bash
