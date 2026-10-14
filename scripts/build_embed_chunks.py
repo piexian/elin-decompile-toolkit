@@ -127,8 +127,10 @@ def pack(entries, section=SECTION):
 
 def pack_code(classes, section=SECTION):
     """反编译源码专用：把所有类拉成一条行流，逐行填到接近 section 为止再切段。
-    换类时插一行 `// 类: X  来源: ...`，所以跨类拼段也不会丢出处。
-    返回 [(段首类名, 围栏包裹的代码正文)]。
+    换类时插一行 `// 类: X`，所以跨类拼段也不会丢出处。
+    不写文件路径——检索方（群聊机器人）读不了本地文件，路径是噪音。
+    段标题 = `Elin 反编译：首类 等 N 类`（块是按行切满的，横跨多个类，只写首类会让人摸不着头脑）。
+    返回 [(段标题, 围栏包裹的代码正文)]。
     比「先按类切段再合并」好在没有段落边界浪费，每段都顶到上限。"""
     budget = section - 40  # 留给围栏和标题行
     out, buf, size, first, prev = [], [], 0, None, None
@@ -136,12 +138,15 @@ def pack_code(classes, section=SECTION):
     def flush():
         nonlocal buf, size, first
         if buf:
-            out.append((first, '```csharp\n' + ''.join(buf).rstrip() + '\n```'))
+            text = ''.join(buf)
+            n = 1 + text.count('// 类: ')
+            title = f'Elin 反编译：{first} 等 {n} 类' if n > 1 else f'Elin 反编译：{first}'
+            out.append((title, '```csharp\n' + text.rstrip() + '\n```'))
         buf, size, first = [], 0, None
 
     for cls, fn, body in classes:
         if prev is not None and cls != prev:
-            marker = f'// 类: {cls} (Elin 反编译)  来源: src/classes/{fn}\n'
+            marker = f'// 类: {cls} (Elin 反编译)\n'
             if size + len(marker) > budget:
                 flush()
             if first is None:
@@ -172,6 +177,9 @@ def make_title(group, items):
     label = f'未归类{group[1:]}' if group.startswith('~') else group
     if len(items) == 1:
         return first
+    if first.split('（')[0] == label:
+        # 组名与段标题同源（如 doc 的分节），不重复拼两遍
+        return f'{label} 等 {len(items)} 项'
     return f'{label}：{first} 等 {len(items)} 项'
 
 
@@ -191,8 +199,8 @@ def write_batches(sections, prefix, group):
     for i, batch in enumerate(batches, 1):
         name = f'{prefix}_{i:02d}.md'
         with open(os.path.join(OUT, name), 'w', encoding='utf-8') as f:
-            f.write(f'<!-- source_type: {group} | version: {VERSION} | '
-                    f'part: {i}/{len(batches)} -->\n\n')
+            # 不写文件头注释/散文本：MarkdownChunker 会把首标题前的散文本单独成块，
+            # 检索时这类泛化词块（code/version）反而霸占结果（2026-10-11 实测）。
             f.write('\n\n'.join(batch).rstrip() + '\n')
         files += 1
         chunks += len(batch)
@@ -241,6 +249,32 @@ def num_key(s):
     return (0, int(m.group(1))) if m else (1, 0)
 
 
+def build_code(report):
+    """反编译类 → code_*.md。按行流式切割而不是先按类切段——段落贪心切会留
+    20~40% 空隙，直接按行填满 SECTION，每段都能顶到上限，块数最接近 总字符/分块大小。"""
+    classes = []
+    codedir = os.path.join(SRC, 'code')
+    skipped_empty = 0
+    skipped_pruned = 0
+    for fn in sorted(os.listdir(codedir)):
+        if not fn.endswith('.cs'):
+            continue
+        cls = fn[:-3]
+        if PRUNE_PREFIX.match(cls) or cls in PRUNE_EXACT:
+            skipped_pruned += 1
+            continue
+        text = open(os.path.join(codedir, fn), encoding='utf-8').read()
+        body = text.strip()
+        # 空壳类（只有 class/接口声明和一对花括号）对检索没有价值
+        if len(re.sub(r'[\s{}/\[\]():;,]*class[\w\s]*$', '', body, flags=re.M)) < 40:
+            skipped_empty += 1
+            continue
+        classes.append((cls, fn, body))
+    sections = pack_code(classes)
+    report.append(('code',) + write_batches(sections, 'code', 'code'))
+    return skipped_empty, skipped_pruned
+
+
 def main():
     if os.path.exists(OUT):
         shutil.rmtree(OUT)
@@ -283,7 +317,8 @@ def main():
                 path = os.path.join(root, fn)
                 rel = os.path.relpath(path, SRC).replace('\\', '/')
                 text = open(path, encoding='utf-8').read()
-                name = rel.rsplit('.', 1)[0]
+                # 分组/排序键与段标题都不带路径与下划线（检索方读不了文件）
+                name = rel.rsplit('.', 1)[0].split('/')[-1].replace('_', ' ')
                 # 先按二级标题切，再降级标题，保证每个段落只有一个 markdown 标题
                 for i, sec in enumerate(re.split(r'\n(?=##\s)', text), 1):
                     sec = sec.strip()
@@ -294,35 +329,16 @@ def main():
                     # 没有二级标题的整篇草稿会变成一个超长段落，必须按长度再切
                     parts = split_long(sec, SECTION)
                     for j, part in enumerate(parts, 1):
-                        tag = f' 第{i}节' + (f'/{len(parts)}段' if len(parts) > 1 else '')
-                        entries.append((name, f'{name}（{rel}{tag}）', part))
+                        # 标题不带路径：检索方读不了文件，versions/xxx.md 这种是噪音
+                        short = name.split('/')[-1].replace('_', ' ')
+                        seg = f'（第{i}节，共{len(parts)}段）' if len(parts) > 1 else ''
+                        entries.append((name, f'{short}{seg}', part))
     entries.sort(key=lambda e: e[0])
     sections = pack(entries)
     report.append(('doc',) + write_batches(sections, 'doc', 'doc'))
 
     # ---- code：反编译类 ----
-    # 按行流式切割而不是先按类切段——段落贪心切会留 20~40% 空隙，
-    # 直接按行填满 SECTION，每段都能顶到上限，块数最接近 总字符/分块大小。
-    classes = []
-    codedir = os.path.join(SRC, 'code')
-    skipped_empty = 0
-    skipped_pruned = 0
-    for fn in sorted(os.listdir(codedir)):
-        if not fn.endswith('.cs'):
-            continue
-        cls = fn[:-3]
-        if PRUNE_PREFIX.match(cls) or cls in PRUNE_EXACT:
-            skipped_pruned += 1
-            continue
-        text = open(os.path.join(codedir, fn), encoding='utf-8').read()
-        body = text.strip()
-        # 空壳类（只有 class/接口声明和一对花括号）对检索没有价值
-        if len(re.sub(r'[\s{}/\[\]():;,]*class[\w\s]*$', '', body, flags=re.M)) < 40:
-            skipped_empty += 1
-            continue
-        classes.append((cls, fn, body))
-    sections = pack_code(classes)
-    report.append(('code',) + write_batches(sections, 'code', 'code'))
+    skipped_empty, skipped_pruned = build_code(report)
 
     # ---- 清单 ----
     total_c = sum(r[2] for r in report)
@@ -337,13 +353,15 @@ def main():
         '|---|---|---|---|',
     ]
     for group, f_, c_, ch_ in report:
+        if f_ == 0:
+            continue
         lines.append(f'| `{group}_*.md` | {f_} | {c_} | {ch_:,} |')
     lines += [
         f'| **合计** | **{total_f}** | **{total_c}** | |',
         '',
         '## WebUI 设置',
         '',
-        f'- **分块大小设 {CHUNK_SIZE}、分块重叠 100**。本目录的段落都按 {SECTION} 字符打包，'
+        f'- **分块大小设 {CHUNK_SIZE}、分块重叠 100**。语料段落都按 {SECTION} 字符打包，'
         '一个段落正好一个块，不会被二次切分。**切分参数和本目录是配套的**：改了分块大小就要重跑 '
         f'`python tools/build_embed_chunks.py <新的分块大小>`。',
         f'- 想更快：重跑 `python tools/build_embed_chunks.py 4096`，块数约 {total_c // 2}，'
@@ -354,12 +372,19 @@ def main():
         '',
         '## 剔除内容',
         '',
+    ]
+    lines += [
         f'- 渲染 / UI / 音频 / 网络 / 引擎设置类 **{skipped_pruned} 个**（见 `tools/build_embed_chunks.py` '
         '的 `PRUNE_PREFIX` / `PRUNE_EXACT`，设成空即可全量嵌入）。',
         f'- 空壳类（只有类声明没有实现）**{skipped_empty} 个**。',
     ]
-    with open(os.path.join(OUT, 'MANIFEST.md'), 'w', encoding='utf-8') as f:
+    # 清单是给人看的操作说明，不进上传目录——上传目录里只能有语料本体
+    manifest_path = os.path.join(os.path.dirname(OUT), 'MANIFEST.md')
+    with open(manifest_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines) + '\n')
+    legacy = os.path.join(OUT, 'MANIFEST.md')
+    if os.path.exists(legacy):
+        os.remove(legacy)
 
     for group, f_, c_, ch_ in report:
         print(f'{group}: {f_} 个聚合文件 -> {c_} 块, {ch_:,} 字符')
