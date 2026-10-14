@@ -43,7 +43,7 @@ def game_dir():
     env = os.environ.get('ELIN_GAME_DIR')
     if env:
         return env
-    sys.path.insert(0, ROOT + os.sep + 'tools')
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from steam_locate import find_game_dir
     g = find_game_dir()
     if not g:
@@ -57,11 +57,14 @@ def main():
     name = None
     trim = '--trim' in sys.argv
     snow = '--snow' in sys.argv
+    tile = None
     for a in sys.argv[1:]:
         if a.startswith('--outdir='):
             outdir = a.split('=', 1)[1]
         elif a.startswith('--name='):
             name = a.split('=', 1)[1]
+        elif a.startswith('--tile='):
+            tile = int(a.split('=', 1)[1])
     if not args:
         raise SystemExit(__doc__)
 
@@ -84,7 +87,9 @@ def main():
         if c:
             rd = c['_idRenderData']
             atlas_file, cols, span = ATLAS[rd]
-            if snow:
+            if tile is not None:
+                idx = tile
+            elif snow:
                 arr = c.get('_tiles_snow') or c.get('tiles_snow')
                 if not arr:
                     raise SystemExit('%s 没有冬装图块（tiles_snow 为空）' % cid)
