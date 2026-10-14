@@ -5,7 +5,28 @@ description: Extract and verify data from the game Elin (Unity) — decompile El
 
 # Elin Decompilation Research Toolkit
 
-A set of Python scripts with zero third-party dependencies that extract official data from a locally installed copy of Elin and decompile its source: for writing wiki pages, answering mechanics questions, diffing game versions, and building an LLM knowledge base. Every script derives the workspace root from its own location, so the folder can live anywhere.
+A set of Python scripts — standard library only, with the single exception of `crop_chara_sprite.py`, which needs Pillow — that extract official data from a locally installed copy of Elin and decompile its source: for writing wiki pages, answering mechanics questions, diffing game versions, and building an LLM knowledge base. Every script derives the workspace root from its own location, so the folder can live anywhere.
+
+## Installing this skill (for the agent reading this)
+
+If you are an AI agent and the user asks you to install, update or re-install this skill, do not invent a path — this file was written for several agents and the directory differs per agent:
+
+| Agent | Global skills directory |
+|---|---|
+| Claude Code | `~/.claude/skills/` |
+| Codex | `~/.codex/skills/` |
+| ZCode | `~/.zcode/skills/` |
+| Generic `SKILL.md` readers (Cursor, …) | see that agent's documentation |
+
+The canonical copy lives at `~/.agents/skills/elin-decompile-toolkit/`; other agents' directories usually hold symlinks to it. Before installing, list the existing skills directories and report what is already there. Then copy (or symlink) this whole folder so that `SKILL.md` and `scripts/` stay siblings:
+
+```bash
+npx skills add piexian/elin-decompile-toolkit   # when Node.js is available
+# otherwise, from the folder containing this SKILL.md:
+cp -r . ~/.zcode/skills/elin-decompile-toolkit/
+```
+
+Verify afterwards that `~/.zcode/skills/elin-decompile-toolkit/SKILL.md` and `.../scripts/steam_locate.py` both exist — the scripts locate the workspace from their own path, so a shuffled layout makes every one of them fail. Never partially copy: `scripts/` is not optional.
 
 ## Two iron rules (read before drawing any conclusion)
 
@@ -75,6 +96,13 @@ After overwriting an existing file, check the pages that use it and confirm they
 | `extract_elements.py` | Extract the SourceElement table (enchant/skill/spell rows with weights, slots, tags) | same |
 | `extract_thing_rows.py` | Strictly parse SourceThing / SourceCategory / SourceSpawnList: full item fields (category, value, spawn weight, tags), the category parent tree, and shop/gacha spawn-list definitions → `things_full.jsonl` + `categories.json` + `spawnlists.json` | same |
 | `extract_chara_rows.py` | Strictly parse SourceChara / SourceRace / SourceJob: character rows (level, race, job, bio, works/hobbies) plus race/job stat blocks → `charas_full.jsonl` + `races.json` + `jobs.json`; requires `extract_thing_rows.py` in the same directory | same |
+| `extract_zone_rows.py` | Strictly parse SourceZone → `zones_full.json` (zone/town/dungeon rows); aborts non-zero if the id set disagrees with `lang/Zone.json` | `[<game dir>] <outdir>`; auto-located when omitted |
+| `extract_quest_rows.py` | Strictly parse SourceQuest → `quests_full.json` (quest definitions); same id check against `lang/Quest.json` | same |
+| `gen_chara_table.py` | Regenerate the site's 603-row `[[角色表]]` from `charas_full.jsonl` (names from `lang/Chara.json`, abilities from `lang/Element.json`) | `[<output md>]`; defaults to `tmp/角色表-重生成.md` |
+| `gen_zone_pages.py` | Generate missing location-page drafts from `zones_full.json` + `lang/Zone.json`, titled by the site's own `模板:地点导航` link text | `<outdir>` |
+| `update_chara_ylv.py` | Merge Ylvapedia cross-check data into `drafts/characters/` drafts (EN/JA bestiary numeric blocks). **Maintainer-only** — reads `notes/ylvapedia/*.txt` and rewrites `drafts/characters/`, neither of which ships in this repo | `[<chara id> ...]`; all 30 when omitted |
+| `gen_god_pages.py` | Generate `神/<name>` sub-page drafts from `data/religions.json`. **Maintainer-only** — no SourceReligion extractor ships here, so that table has to be produced in the maintainer workspace | `<outdir>` |
+| `crop_chara_sprite.py` | Crop character sprites / item icons out of the game atlases by the game's own replace-texture rule (the only allowed way to produce a sprite — screenshots are not accepted by the wiki) | `python scripts/crop_chara_sprite.py <id> [id ...]`; needs Pillow, the one script that is not stdlib-only |
 | `steam_locate.py` | Shared game-dir locator; also runnable standalone | `python scripts/steam_locate.py` |
 | `split_decompiled.py` | Split the single-file decompile into per-class files | `[<src.cs>] [<outdir>]`; defaults to `kb/src/classes` |
 | `diff_by_class.py` | Attribute a version diff to classes, sorted by churn | `<old.cs> <new.cs> <unified diff file>` |
@@ -88,7 +116,15 @@ Scripts that need the game path auto-locate it: the `ELIN_GAME_DIR` env var wins
 
 ## First-time setup
 
-Prerequisites: Python 3.8+ (stdlib only) and .NET SDK 8+. The game must be installed.
+
+
+Prerequisites: Python 3.8+ and .NET SDK 8+. The game must be installed. Everything runs on the standard library **except** `crop_chara_sprite.py`, which needs Pillow — install it only if you intend to crop sprites:
+
+```bash
+pip install Pillow          # sole third-party dependency; skip it to stay stdlib-only
+```
+
+The sprite script fails at import with `ModuleNotFoundError: No module named 'PIL'` when Pillow is missing, which is expected and does not affect any other script. Install it into the same interpreter that runs the scripts (`python -m pip install Pillow` if `pip` points elsewhere).
 
 ```bash
 dotnet tool install -g ilspycmd
@@ -98,12 +134,20 @@ python scripts/lang_xlsx_to_json.py data/lang
 python scripts/extract_things.py    data
 python scripts/extract_materials.py data
 
-# Decompile: single-file output follows the console code page — GBK on Chinese Windows, must be
-# converted back to UTF-8 (see pitfalls). Keep intermediates inside the project; never /tmp.
+# Decompile with reference assemblies (-r): without it Unity types fail to resolve and version
+# diffs drown in ~60k lines of decompiler-style noise. -o writes a directory; encoding has varied
+# between builds, so the transcode below tries UTF-8 first and falls back to the console code page.
+# Keep intermediates inside the project; never /tmp.
 mkdir -p src
-ilspycmd "<game dir>/Elin_Data/Managed/Elin.dll" > new.cs
-python -c "d=open('new.cs','rb').read().decode('cp936'); open('src/Elin.decompiled.cs','w',encoding='utf-8',newline='\n').write(d)"
-rm new.cs
+ilspycmd -r "<game dir>/Elin_Data/Managed" -o tmp_decomp "<game dir>/Elin_Data/Managed/Elin.dll"
+python - <<'PY'
+b = open('tmp_decomp/Elin.decompiled.cs','rb').read()
+try:    t = b.decode('utf-8-sig')
+except UnicodeDecodeError: t = b.decode('cp936')
+assert '\ufffd' not in t, 'transcode accident'
+open('src/Elin.decompiled.cs','w',encoding='utf-8',newline='\n').write(t.replace('\r\n','\n'))
+PY
+rm -r tmp_decomp
 
 python scripts/lookup.py 奶酪      # sanity check: items + recipes found means the pipeline works
 python scripts/split_decompiled.py # split into kb/src/classes for per-class retrieval
