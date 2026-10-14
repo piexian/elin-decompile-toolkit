@@ -2,7 +2,11 @@
 
 一套给 AI Agent 用的 [Agent Skill](https://skills.sh)，从本地安装的《Elin》提取官方数据并反编译源码：查物品/角色的官方中文译名、核对机制结论、比对游戏版本、构建本地 LLM 知识库。装上之后，Agent 回答 Elin 相关问题时会先查真实游戏数据，而不是凭印象或社区二手资料。
 
-纯 Python 标准库，无第三方依赖。
+纯 Python 标准库，**唯一例外**：`crop_chara_sprite.py`（从图集切角色像素小人）需要 Pillow，其余脚本零第三方依赖。不切图就不必装。
+
+```bash
+pip install Pillow    # 仅 crop_chara_sprite.py 需要；装到实际运行脚本的那个解释器
+```
 
 ## 安装
 
@@ -62,11 +66,18 @@ python scripts/lang_xlsx_to_json.py data/lang
 # 2. 物品行与材质表
 python scripts/extract_things.py    data
 python scripts/extract_materials.py data
-# 3. 反编译主 DLL（中文 Windows 上输出是 GBK，必须转回 UTF-8，脚本注释里有说明）
+# 3. 反编译主 DLL。-r 传引用程序集（不传则 Unity 类型解析失败，版本 diff 会被几万行
+#    反编译器噪音淹没）；输出编码在不同构建间变过（cp936 / UTF-8 都出现过），不要假设
 mkdir -p src
-ilspycmd "<游戏目录>/Elin_Data/Managed/Elin.dll" > new.cs
-python -c "d=open('new.cs','rb').read().decode('cp936'); open('src/Elin.decompiled.cs','w',encoding='utf-8',newline='\n').write(d)"
-rm new.cs
+ilspycmd -r "<游戏目录>/Elin_Data/Managed" -o tmp_decomp "<游戏目录>/Elin_Data/Managed/Elin.dll"
+python - <<'PY'
+b = open('tmp_decomp/Elin.decompiled.cs','rb').read()
+try:    t = b.decode('utf-8-sig')
+except UnicodeDecodeError: t = b.decode('cp936')
+assert '\ufffd' not in t, '转码事故'
+open('src/Elin.decompiled.cs','w',encoding='utf-8',newline='\n').write(t.replace('\r\n','\n'))
+PY
+rm -r tmp_decomp
 # 4. 自检
 python scripts/lookup.py 奶酪
 ```
@@ -79,19 +90,29 @@ python scripts/lookup.py 奶酪
 | `lang_xlsx_to_json.py` | 官方中文语言包 xlsx → JSON |
 | `extract_things.py` | 从 sharedassets0.assets 提取物品行（含配方） |
 | `extract_materials.py` | 提取材质表（含 decay 腐烂值） |
+| `extract_thing_rows.py` | 严格解析 SourceThing/Category/SpawnList → `things_full.jsonl` + `categories.json` + `spawnlists.json` |
+| `extract_chara_rows.py` | 严格解析 SourceChara/Race/Job → `charas_full.jsonl` + `races.json` + `jobs.json` |
+| `extract_zone_rows.py` | 严格解析 SourceZone → `zones_full.json`（id 与语言包不一致会报错退出） |
+| `extract_quest_rows.py` | 严格解析 SourceQuest → `quests_full.json` |
+| `extract_elements.py` | 解析 SourceElement 表（专长/技能/法术，含权重与槽位） |
 | `split_decompiled.py` | 反编译单文件按类拆分，供按类检索 |
 | `diff_by_class.py` | 版本间代码 diff 归属到类，按改动量排序 |
 | `diff_lang.py` | 版本间语言表逐行 diff |
 | `lookup.py` | 综合查询（id / 中 / 英 / 日 互查 + 配方） |
 | `gen_character_pages.py` | 按站内最完整规格生成角色页草稿 |
+| `gen_chara_table.py` | 用 `charas_full.jsonl` 重生成站内 603 行 `[[角色表]]` |
+| `gen_zone_pages.py` | 按站内 `模板:地点导航` 分组生成缺失地点页草稿 |
+| `crop_chara_sprite.py` | 从图集切角色像素小人/物品图标（**需要 Pillow**；站内不接受截图） |
 | `build_corpus.py` | 重建 RAG 语料（每实体一个 .md） |
 | `build_embed_chunks.py` | 重建 AstrBot 上传用的聚合语块 + MANIFEST.md |
+
+`update_chara_ylv.py`（合入 Ylvapedia 补查数据）和 `gen_god_pages.py`（生成神页草稿）是维护者工作区专用：前者读写 `notes/ylvapedia/` 与 `drafts/characters/`，后者依赖尚无提取器的 `data/religions.json`，两者都不在本仓库里。
 
 版本比对和知识库构建的完整流程见 `SKILL.md`，「版本比对实战要点」一节用 EA 23.345 → 23.349 的一次真实比对演示了怎么读 diff 结论、怎么从语言包增量找新内容。
 
 ## 已知坑
 
-- `ilspycmd` 单文件输出走 Windows 控制台代码页，中文机器是 GBK，直接按 UTF-8 读会抛 `UnicodeDecodeError`；用 `errors='ignore'` 绕开会让日文变成乱码，容易被误判成「游戏改了字符串」。
+- `ilspycmd` 的输出编码**不要假设**：重定向形式走 Windows 控制台代码页（中文机器是 GBK），`-o` 目录形式在不同构建间既出现过 GBK 也出现过 UTF-8。直接按 UTF-8 读会抛 `UnicodeDecodeError`；用 `errors='ignore'` 绕开会让日文变成乱码，容易被误判成「游戏改了字符串」。落盘固定走「先试 `utf-8-sig`、失败退 `cp936`、断言无 U+FFFD」，并把 CRLF 归一成 LF 再 diff，否则 2 行真实改动会变成全文件 45.8 万行幻影 diff。
 - 语言包里未翻译的行在 `name` 列填 `*r` 占位符，真正的名字在 `name_JP` / `detail_JP` 等列，导出语料时要把这些列一起带出来。
 - `extract_things.py` 依赖语言包做行首识别，语言包没先跑会产出 0 行（脚本会警告）。
 - 中间文件别放 `/tmp`：Git Bash 和 Windows Python 对它的解释不一致。
@@ -104,7 +125,7 @@ elin-decompile-toolkit/
 ├── AGENTS.md           项目约定，多数 Agent 会自动读取（关键位置表 / wiki 惯例 / 词条索引）
 ├── README.md           本文件
 ├── data/version_changes.json  版本变动源表（结构化，build_corpus 渲染进语料）
-└── scripts/            11 个 Python 脚本
+└── scripts/            19 个 Python 脚本（仅 crop_chara_sprite.py 需要 Pillow）
 ```
 
 生成的数据（`data/`、`src/`、`kb/`）不进仓库，见 `.gitignore`。
