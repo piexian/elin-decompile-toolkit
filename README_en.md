@@ -20,6 +20,8 @@ When you want one lookup without putting anything in a skills directory, let the
 
 ```bash
 npx skills use "https://github.com/piexian/elin-decompile-toolkit" --skill "elin-decompile-toolkit" > skill.txt
+# If GitHub is unreachable, use the GitCode mirror (non-GitHub hosts need the .git suffix):
+npx skills use "https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git" --skill "elin-decompile-toolkit" > skill.txt
 ```
 
 The output is long — redirect it to a file and read that. It names the directory the supporting files were downloaded to; run the scripts from there, since they derive the workspace root from their own location and work from anywhere.
@@ -40,7 +42,18 @@ npx skills add piexian/elin-decompile-toolkit --copy  # copy files instead of sy
 npx skills add piexian/elin-decompile-toolkit -y      # non-interactive, for CI / agent runs
 ```
 
-Node.js is needed for `npx` only; the skill itself does not depend on it.
+If GitHub is unreachable (e.g. from mainland China), use the GitCode mirror <https://gitcode.com/PIEXIAN/elin-decompile-toolkit> — both forms tested:
+
+```bash
+npx skills add https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git
+```
+```bash
+GH_HOST=gitcode.com npx skills add piexian/elin-decompile-toolkit
+```
+
+The GitCode URL **must end with `.git`** — without the suffix the CLI treats it as a downloadable resource rather than a git repository and fails with "Downloaded URL is not a valid SKILL.md file or supported archive". Setting `GH_HOST` instead redirects the `owner/repo` shorthand to GitCode; all the flags above work as-is.
+
+You need [Node.js](https://nodejs.org/en) for `npx` only; the skill itself does not depend on it.
 
 ### Option 2: manual copy
 

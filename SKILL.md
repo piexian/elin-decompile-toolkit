@@ -20,6 +20,8 @@ You are probably reading this because `npx skills use` fetched it into a tempora
 npx skills use "https://github.com/piexian/elin-decompile-toolkit" --skill "elin-decompile-toolkit" > /tmp/elin-skill.txt
 ```
 
+If GitHub is unreachable, the same command works against the GitCode mirror: use `https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git` as the URL — a non-GitHub host must carry the `.git` suffix, or the CLI misparses it as a downloadable resource.
+
 Resolve every relative path in this file — `scripts/`, `data/` — against that downloaded directory, not against the user's project and not against an installed copy.
 
 **Install for reuse** when the user asks for it, or when you want the toolkit available in later sessions:
@@ -27,6 +29,8 @@ Resolve every relative path in this file — `scripts/`, `data/` — against tha
 ```bash
 npx skills add piexian/elin-decompile-toolkit -g -y -a <agent> --copy
 ```
+
+When GitHub is unreachable, point the same command at the GitCode mirror: the full URL `https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git` (keep the `.git` suffix) or set `GH_HOST=gitcode.com` before the shorthand.
 
 `-a` takes an agent name (`zcode`, `claude-code`, `codex`, …), or `*` for every agent the CLI knows about — note that `*` is the full registry, not the agents detected on this machine, so it writes a copy into every one of those directories (55 at the time of writing); name an agent unless the user wants all. `--copy` writes real files instead of symlinks, which keeps each agent's copy independent.
 

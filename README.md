@@ -20,6 +20,8 @@ pip install Pillow    # 仅 crop_chara_sprite.py 需要；装到实际运行脚�
 
 ```bash
 npx skills use "https://github.com/piexian/elin-decompile-toolkit" --skill "elin-decompile-toolkit" > skill.txt
+# 国内访问不畅时改用 GitCode 镜像（非 GitHub 主机必须带 .git 后缀）：
+npx skills use "https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git" --skill "elin-decompile-toolkit" > skill.txt
 ```
 
 输出很长，重定向到文件再读。末尾会给出支撑文件下载到哪个目录，脚本从那个目录直接跑即可——脚本靠自身位置推导工作区根目录，放哪儿都能跑。
@@ -40,7 +42,18 @@ npx skills add piexian/elin-decompile-toolkit --copy  # 复制文件而不是建
 npx skills add piexian/elin-decompile-toolkit -y      # 非交互，CI/Agent 里用
 ```
 
-需要 Node.js（仅 `npx` 这一步用，skill 本身不依赖）。
+国内访问 GitHub 不畅时改用 GitCode 镜像 <https://gitcode.com/PIEXIAN/elin-decompile-toolkit>，两种写法实测可用：
+
+```bash
+npx skills add https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git
+```
+```bash
+GH_HOST=gitcode.com npx skills add piexian/elin-decompile-toolkit
+```
+
+GitCode 的 URL **必须带 `.git` 后缀**——不带后缀 CLI 会把它当成待下载的资源而不是 git 仓库，报「Downloaded URL is not a valid SKILL.md file or supported archive」；`GH_HOST` 环境变量则让 `owner/repo` 形式的命令整体指向 GitCode，上面的常用参数照常使用。
+
+需要 [Node.js](https://nodejs.org/zh-cn)（仅 `npx` 这一步用，skill 本身不依赖）。
 
 ### 方式二：手动复制
 
