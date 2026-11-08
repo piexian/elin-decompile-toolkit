@@ -125,7 +125,7 @@ After overwriting an existing file, check the pages that use it and confirm they
 | `gen_god_pages.py` | Generate `神/<name>` sub-page drafts from `data/religions.json`. **Maintainer-only** — no SourceReligion extractor ships here, so that table has to be produced in the maintainer workspace | `<outdir>` |
 | `crop_chara_sprite.py` | Crop character sprites / item icons out of the game atlases by the game's own replace-texture rule (the only allowed way to produce a sprite — screenshots are not accepted by the wiki) | `python scripts/crop_chara_sprite.py <id> [id ...]`; needs Pillow, the one script that is not stdlib-only |
 | `steam_locate.py` | Shared game-dir locator; also runnable standalone | `python scripts/steam_locate.py` |
-| `split_decompiled.py` | Split the single-file decompile into per-class files | `[<src.cs>] [<outdir>]`; defaults to `kb/src/classes` |
+| `split_decompiled.py` | Split the single-file decompile into per-class files (text search and corpus only — a C# language server needs the `ilspycmd -p` project instead, since these files carry no `using` headers) | `[<src.cs>] [<outdir>]`; defaults to `kb/src/classes` |
 | `diff_by_class.py` | Attribute a version diff to classes, sorted by churn | `<old.cs> <new.cs> <unified diff file>` |
 | `diff_lang.py` | Row-level diff of the language tables | `<old lang dir> <new lang dir>` |
 | `lookup.py` | All-in-one lookup (id / CN / EN / JP + recipes) | `python scripts/lookup.py 奶酪` |
@@ -180,6 +180,10 @@ cp src/Elin.decompiled.cs src/versions/Elin.decompiled.<old-version>.cs   # arch
 diff -u src/versions/Elin.decompiled.<old>.cs src/Elin.decompiled.cs > src/versions/code_diff.txt
 python scripts/diff_by_class.py src/versions/Elin.decompiled.<old>.cs src/Elin.decompiled.cs src/versions/code_diff.txt
 python scripts/diff_lang.py <old lang dir> data/lang
+# re-deploy the source dir that the search plugin/LSP reads (project mode, with its csproj):
+mkdir -p src/elin-<new-version>
+ilspycmd -p -r "<game dir>/Elin_Data/Managed" -o src/elin-<new-version> "<game dir>/Elin_Data/Managed/Elin.dll"
+# + version.json in that directory; see "Building an AstrBot knowledge base"
 ```
 
 `diff_by_class.py` attributes diff lines to their enclosing type and sorts by churn — the fastest way to tell whether an existing conclusion was touched by this update. The next section is a worked example.
@@ -209,7 +213,16 @@ python scripts/build_corpus.py          # kb/corpus: one .md per entity
 python scripts/build_embed_chunks.py    # kb/embed_ready: aggregated upload chunks + MANIFEST.md
 ```
 
-Since EA 23.356 the embedded corpus carries **translation/data chunks only** — `build_embed_chunks.py` defaults to `SKIP_CODE = True` and skips the per-class code chunks entirely. Source-code questions are answered by the local companion plugin `astrbot_plugin_self_file_search` (grep + LSP over the per-class split in `src/elin-<version>/`), which is both cheaper and always current; flip `SKIP_CODE` back to `False` only if you specifically want code inside the vector store.
+Since EA 23.356 the embedded corpus carries **translation/data chunks only** — `build_embed_chunks.py` defaults to `SKIP_CODE = True` and skips the per-class code chunks entirely. Source-code questions are answered by the local companion plugin `astrbot_plugin_self_file_search` (grep + LSP over `src/elin-<version>/`), which is both cheaper and always current; flip `SKIP_CODE` back to `False` only if you specifically want code inside the vector store.
+
+That directory has to be the **`ilspycmd -p` project output** — `Elin.csproj` (auto-referencing the game's `Managed` DLLs by HintPath) plus one file per type, each keeping its `using` block. Point a C# language server at anything else and it fails to start: a folder of loose `.cs` files makes csharp-ls throw `System.Exception: no or .csproj/.fsproj or sln files found`, and the per-class split from `split_decompiled.py` cannot be rescued by dropping in a csproj, because those files have no `using` headers at all. Deploy with
+
+```bash
+ilspycmd -p -r "<game dir>/Elin_Data/Managed" -o src/elin-<version> "<game dir>/Elin_Data/Managed/Elin.dll"
+# then write src/elin-<version>/version.json: {"version": "...", "versionText": "...", "buildDate": "...", "channel": "..."}
+```
+
+Keep `version.json` in the root — the plugin stamps its answers with it. To confirm semantic search after a version swap, drive the server headlessly: initialize with `rootUri`/`workspaceFolders` = that directory, `didOpen` one large file, then `textDocument/documentSymbol` and a cross-file `textDocument/definition`/`references`. For EA 23.358 that returned 515 symbols for `Chara.cs`, resolved `Card` to `Card.cs:9` and found 1810 references to `Chara`.
 
 `kb/embed_ready/` is the **aggregated** upload directory — upload the whole folder to the AstrBot WebUI (the human-facing checklist lands one level up, `kb/MANIFEST.md`, outside the upload folder). Settings must match the directory: **chunk size 2048, overlap 100, dense retrieval 15, sparse retrieval 15**. Changing the chunk size means re-running `build_embed_chunks.py <new chunk size>`.
 
@@ -226,6 +239,7 @@ The packing mirrors AstrBot's own chunker (selected in `astrbot/core/knowledge_b
 - **Character sprite cropping**: the character atlas is a plain PNG on disk — `Package/_Elona/Texture/objs_C.png` (the `pass chara` material's main texture, bound at runtime; **do not hunt for a "chara" texture inside .assets**, you won't find it). Grid is 128px cells, 32 per row, linear tile index from `charas_full.jsonl` `_tiles`: `row = tile // 32`, `col = tile % 32`; crop the cell, then trim to the alpha bounding box. Large sprites (`_idRenderData == "chara_L"`) live in `objs_L.png`. Character portraits (dialog art) are separate files: `Package/_Elona/Portrait/UN_<chara id>.png` — a character with no file there simply has no portrait.
 - **`pref_ints` is a bare `int[26]` with no names — `SourcePref` exposes it as named properties.** Index map (from the `SourcePref` class, which lives in the decompile): 0 `shadow`/`test`, 1 `flags` (PrefFlag enum), 2 height-ish ×0.01, 3 `height`, 4/5 scale ×0.01, 6/7 plain ints, **8 `shadowX`, 9 `shadowY`, 10 `shadowRX`, 11 `shadowRY`**, 12–15 plain ints, 16 `liquidMod`, 17 ×0.01, 18–20 plain ints, 21 `liquidModMax`, 22 `_bits1`, 23 `hatY`/`defaultAltitude`, 24 `heightFix` ×0.01, 25 `scaleTex`. The only consumer of the `R`/`B` variants is `AddShadow(float x, float y, float z, ShadowData.Item s, SourcePref pref, int dir, bool snow)`, which picks `dir < 2 ? (flag ? shadowRX : shadowX) : (flag ? shadowBRX : shadowBX)` for X and the same shape for Y, all scaled by 0.01, with `flag = dir % 2 == 1` marking a mirrored direction. A version diff that only moves four adjacent pref values is a **drop-shadow nudge**, not a stat change — that is exactly how the 23.352 Patch 1 update touched `bigdoor1R` and nothing else in 2587 item rows.
 - **A field name can mean two different variables.** `Act.TC` / `Act.CC` / `Act.TP` are **static** fields on `Act`, while `AttackProcess` declares same-named **instance** fields that shadow them — so a bare `TC` inside `AttackProcess` and an explicit `Act.TC` are different variables, and only the latter is process-wide. Check the qualifier and the call chain before naming a culprit: on the throw path (`ActThrow` → `AttackProcess.Perform(count, hasHit)`) the reachable write to the shared field is `Chara.DoHostileAction`, when a stealthed chara is spotted at range and fires a nested throw; `AttackProcess.Attack()`'s protection-interception callback, its sub-attack helper and `ActMeleeCounter` are **not** on that chain. The 23.352 Patch 1 fix in `ActThrow` snapshots and restores these fields around the throw attack precisely so a leaked target cannot reach the follow-up TraitErohon / DoHostileAction / training-dummy logic.
+- **A C# language server needs a project, not a pile of `.cs` files**: serving the source dir to `astrbot_plugin_self_file_search`'s LSP tools only works when the dir is the `ilspycmd -p` output (`Elin.csproj` + files that keep their `using` headers). Loose directories throw `System.Exception: no or .csproj/.fsproj or sln files found` at startup, and `split_decompiled.py`'s per-class split is unusable for this because those files were cut out of a single dump and carry no `using` lines.
 - **Version diffing**: archive the old decompile before regenerating. `diff_by_class.py` shows which classes changed, but empty shells and pure-render classes are mostly noise.
 - **Never put intermediate files in `/tmp`**: Git Bash and Windows Python resolve it differently; use project-relative paths.
 - **Entities lose their names when packed**: after packing several entities into one heading section, only the first entity's title survives. Every entity's body must carry a `**Name (table id=xxx)**` line, otherwise later entities in the same section lose their id and primary name.
