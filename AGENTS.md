@@ -58,6 +58,17 @@ The remote `elin` MCP at `https://mcp.elin-modding.net/` is the preferred indexe
 
 Agents must inspect the connected tool list before setup, must not add duplicate MCP entries, and must not install anything by default. If a required server is missing, ask once whether the user wants setup; after approval follow `https://mcp.elin-modding.net/llms.txt`, verify release digests, restart the client, and run the documented checks. Runtime MCP executes code sent by a local client and should be disabled for normal play. Installation failures must include the command, verification result, and the matching official URL.
 
+## Local Python checks
+
+CodeQL runs in GitHub; local agents must check Python scripts before relying on a script change:
+
+```bash
+python -m compileall -q scripts
+ruff check scripts --select E9,F63,F7,F82
+```
+
+If `ruff` is unavailable and the task touches `scripts/`, install it before checking with `uv tool install ruff`. If `uv` is unavailable, use `python -m pip install ruff`; when the official PyPI request fails, retry that command with `--index-url https://pypi.tuna.tsinghua.edu.cn/simple`. Run Ruff in the same environment as the scripts. Use `ruff check scripts` for a full advisory audit; the required gate avoids unrelated legacy style rewrites.
+
 ## Iron rules
 
 1. **Names must come from the official language pack in `data/lang/` — never self-translate.** External wikis (Ylvapedia etc.) only provide structural hints; keep the English/Japanese original marked "awaiting official translation" when no Chinese exists.
