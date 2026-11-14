@@ -1,52 +1,78 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""Elin wiki 开发查询工具。
-用法:
-  python lookup.py <关键词>          按 id/中文名/英文名/日文名 模糊查所有表
-  python lookup.py thing <关键词>    只查物品(含配方数据)
-  python lookup.py mat <关键词>      只查材质
-  python lookup.py cat <关键词>      只查类别
-  python lookup.py ele <id或关键词>  查元素/特性
-在工作区根目录(E:\\ElinWiki)下运行。
-"""
+"""lookup：按 id/中文名/英文名/日文名 模糊检索工作区数据。"""
 
 import json
-import os
-import sys
+from pathlib import Path
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA = os.path.join(ROOT, "data")
-LANGDIR = os.path.join(DATA, "lang")
+from .errors import ElinToolError, ExitCode
 
-_cache = {}
-
-
-def load_lang(name):
-    if name not in _cache:
-        p = os.path.join(LANGDIR, name + ".json")
-        _cache[name] = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
-    return _cache[name]
+TABLES = ("all", "thing", "mat", "cat", "ele")
+HIT_CAP_LANG = 30
+HIT_CAP_THING = 20
 
 
-def show_lang(table_name, rid, row):
+class LookupError(ElinToolError):
+    """查询输入或数据无效。"""
+
+    exit_code = ExitCode.GAME_INCOMPLETE
+
+
+def _load_json(path: Path) -> dict:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except OSError as e:
+        raise LookupError(f"读取失败 {path}：{e}") from e
+    except json.JSONDecodeError as e:
+        raise LookupError(f"JSON 损坏 {path}：{e}") from e
+    if not isinstance(data, dict):
+        raise LookupError(f"JSON 顶层必须是对象：{path}")
+    return data
+
+
+def _read_jsonl(path: Path) -> list:
+    try:
+        rows = [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    except OSError as e:
+        raise LookupError(f"读取失败 {path}：{e}") from e
+    except json.JSONDecodeError as e:
+        raise LookupError(f"JSONL 损坏 {path}：{e}") from e
+    bad = next((i for i, r in enumerate(rows) if not isinstance(r, dict)), None)
+    if bad is not None:
+        raise LookupError(f"JSONL 第 {bad + 1} 行不是对象：{path}")
+    return rows
+
+
+def show_lang(table_name: str, rid, row: dict) -> None:
     cn = row.get("name", "")
     en = row.get("name_EN", "")
     jp = row.get("name_JP", "")
     print(f"  [{table_name}] id={rid} | CN={cn} | EN={en} | JP={jp}")
     for k in ("detail", "detail_EN", "filter", "version"):
         v = row.get(k)
-        if v and not v.isdigit():
-            print(f"      {k}: {v[:100]}")
+        if v and not str(v).isdigit():
+            print(f"      {k}: {str(v)[:100]}")
 
 
-def search_lang(kw):
+def search_lang(lang_dir: Path, kw: str, table: str | None = None) -> None:
+    """在语言包各表按 id/name/name_EN/name_JP/alias 模糊查。"""
     kwl = kw.lower()
     hits = 0
-    for fn in sorted(os.listdir(LANGDIR)):
-        if not fn.endswith(".json"):
+    try:
+        files = sorted(lang_dir.iterdir())
+    except OSError as e:
+        raise LookupError(f"遍历 data/lang 失败：{e}") from e
+    for fn in files:
+        if not fn.name.endswith(".json"):
             continue
-        table = fn[:-5]
-        for rid, row in load_lang(table).items():
+        name = fn.stem
+        if table and name != table:
+            continue
+        for rid, row in _load_json(fn).items():
+            if not isinstance(row, dict):
+                raise LookupError(f"语言包 {fn.name} 的行 {rid!r} 不是对象")
             fields = [
                 rid,
                 str(row.get("name", "")),
@@ -55,112 +81,73 @@ def search_lang(kw):
                 str(row.get("alias", "")),
             ]
             if any(kwl in f.lower() for f in fields):
-                show_lang(table, rid, row)
+                show_lang(name, rid, row)
                 hits += 1
-                if hits > 30:
-                    print("  ... (截断, 前30条)")
+                if hits > HIT_CAP_LANG:
+                    print(f"  ... (截断, 前{HIT_CAP_LANG}条)")
                     return
 
 
-def search_things(kw):
+def search_things(things: list, thing_lang: dict, kw: str) -> None:
+    """检索 canonical things.jsonl：id 与语言包直连，不按名字猜 id。"""
     kwl = kw.lower()
-    p = os.path.join(DATA, "things.jsonl")
-    if not os.path.exists(p):
-        print("  things.jsonl 不存在, 先运行 extract_things.py")
-        return
-    # 名称 -> 行 映射(语言包), 用于给二进制行附 id/中文名并支持中文检索
-    thing_lang = load_lang("Thing")
     id2cn = {rid: row.get("name", "") for rid, row in thing_lang.items()}
-    name2id = {}
-    for rid, row in thing_lang.items():
-        for k in ("name_EN", "name_JP"):
-            v = row.get(k)
-            if v and v not in name2id:
-                name2id[v] = rid
     hits = 0
-    for line in open(p, encoding="utf-8"):
-        r = json.loads(line)
-        rid = name2id.get(r.get("name_en", ""), "")
-        if not rid:
-            rid = next(
-                (t for t in reversed(r.get("tail_strings", [])) if t in id2cn), ""
-            )
+    for r in things:
+        if not isinstance(r, dict):
+            raise LookupError("things.jsonl 里有一行不是对象")
+        rid = r.get("id", "")
         cn = id2cn.get(rid, "")
-        names = [r.get("name_en", ""), r.get("name_jp", ""), rid, cn] + r.get(
-            "tail_strings", []
-        )
-        if any(kwl in str(n).lower() for n in names):
-            print(
-                f"  [thing] {cn or r['name_en']} / {r['name_en']} / {r['name_jp']}  (id={rid or '?'})"
-            )
-            print(f"      head: {r['head_strings'][:8]}")
-            if r.get("components"):
-                print(f"      配方: {r['components']} @ {r.get('factory')}")
-            if r.get("tail_strings"):
-                print(f"      tail: {r['tail_strings'][:8]}")
-            hits += 1
-            if hits > 20:
-                print("  ... (截断, 前20条)")
-                return
+        names = [rid, cn, r.get("name_en", ""), r.get("name_jp", ""), r.get("category", "")]
+        if not any(kwl in str(n).lower() for n in names):
+            continue
+        print(f"  [thing] {cn or r['name_en']} / {r['name_en']} / {r['name_jp']}  (id={rid})")
+        print(f"      材质: {r.get('defMat')} / 分类: {r.get('category')}")
+        if r.get("components"):
+            print(f"      配方: {r['components']} @ {r.get('factory')}")
+        hits += 1
+        if hits > HIT_CAP_THING:
+            print(f"  ... (截断, 前{HIT_CAP_THING}条)")
+            return
     if not hits:
         print("  (无物品匹配)")
 
 
-def search_materials(kw):
+def search_materials(mats: list, kw: str) -> None:
+    """检索 materials.jsonl（新格式列表：id/alias/cn/...）。"""
     kwl = kw.lower()
-    mats = json.load(open(os.path.join(DATA, "materials.json"), encoding="utf-8"))
-    for key, m in mats.items():
-        if any(
-            kwl in str(v).lower()
-            for v in [
-                key,
-                m.get("cn", ""),
-                m.get("jp", ""),
-                m.get("en", ""),
-                m.get("id", ""),
-            ]
-        ):
+    for i, m in enumerate(mats):
+        if not isinstance(m, dict):
+            raise LookupError(f"materials.jsonl 第 {i + 1} 行不是对象")
+        fields = [m.get("alias"), m.get("cn"), m.get("name_jp"), m.get("name_en"), m.get("id")]
+        if any(kwl in str(v).lower() for v in fields):
             print(
-                f"  [material] {key} | id={m['id']} | CN={m.get('cn')} | JP={m.get('jp')} | EN={m.get('en')}"
+                f"  [material] {m.get('alias')} | id={m.get('id')} | "
+                f"CN={m.get('cn')} | JP={m.get('name_jp')} | EN={m.get('name_en')}"
             )
 
 
-def main():
-    args = sys.argv[1:]
-    if not args:
-        print(__doc__)
-        return
-    if args[0] == "thing" and len(args) > 1:
-        search_things(args[1])
-    elif args[0] == "mat" and len(args) > 1:
-        search_materials(args[1])
-    elif args[0] == "cat" and len(args) > 1:
-        kwl = args[1].lower()
-        for rid, row in load_lang("Category").items():
-            fields = [
-                rid,
-                str(row.get("name", "")),
-                str(row.get("name_EN", "")),
-                str(row.get("name_JP", "")),
-            ]
-            if any(kwl in f.lower() for f in fields):
-                show_lang("Category", rid, row)
-    elif args[0] == "ele" and len(args) > 1:
-        kwl = args[1].lower()
-        for rid, row in load_lang("Element").items():
-            fields = [
-                rid,
-                str(row.get("name", "")),
-                str(row.get("name_EN", "")),
-                str(row.get("name_JP", "")),
-            ]
-            if any(kwl in f.lower() for f in fields):
-                show_lang("Element", rid, row)
+def lookup(workspace: Path, table: str, query: str) -> None:
+    """按表检索工作区数据；table ∈ all/thing/mat/cat/ele。"""
+    data = workspace / "data"
+    lang_dir = data / "lang"
+    if not lang_dir.is_dir():
+        raise LookupError(f"缺 data/lang（先执行 data extract --table lang）：{workspace}")
+    things = _read_jsonl(data / "things.jsonl") if table in ("all", "thing") else []
+    thing_lang = _load_json(lang_dir / "Thing.json") if table in ("all", "thing") else {}
+    if table == "ele":
+        search_lang(lang_dir, query, table="Element")
+    elif table == "cat":
+        search_lang(lang_dir, query, table="Category")
+    elif table == "thing":
+        search_things(things, thing_lang, query)
+    elif table == "mat":
+        mats = _read_jsonl(data / "materials.jsonl")
+        if not mats or not isinstance(mats[0], dict):
+            raise LookupError("materials.jsonl 不是新格式列表（先执行 data extract --table materials）")
+        search_materials(mats, query)
     else:
-        search_lang(args[0])
-        search_things(args[0])
-        search_materials(args[0])
-
-
-if __name__ == "__main__":
-    main()
+        search_lang(lang_dir, query)
+        search_things(things, thing_lang, query)
+        mats = _read_jsonl(data / "materials.jsonl")
+        search_materials(mats, query)
