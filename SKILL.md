@@ -62,7 +62,7 @@ Every section of a wiki page ends with a source annotation written as a MediaWik
 == 获得方式 ==
 * 完成[[索林]]的遗物剧情后获得遗物槽位（EA 23.350 起），剧情结算时身上没有槽位会自动追加一个。
 * 在装饰台制作：[[宝石]] ×1 ＋ [[基因]] ×1 ＋ [[树脂]] ×25 → '''宿卵'''（relic_lesser，暂无官方中文）。
-<!-- 来源：槽位追加与「完成 into_darkness 任务自动赠送」两处逻辑 TraitSorin / RelicSlot（src/Elin.decompiled.cs，按类拆到 kb/src/classes/）；配方与材料数量 data/things_full.jsonl id=<宿卵> 的 recipe 段；译名 data/lang/Thing.json 同 id 的 name 列为 *r，保留日文原文 -->
+<!-- 来源：槽位追加与「完成 into_darkness 任务自动赠送」两处逻辑 TraitSorin / RelicSlot（src/Elin.decompiled.cs，按类拆到 kb/src/classes/）；配方与材料数量 data/things_full.jsonl id=<宿卵> 的 recipe 段 -->
 ```
 
 Put the comment at the end of the section body, right before the next heading. A summary block at the top of the file is a useful supplement but never replaces the per-section comments.
@@ -71,7 +71,9 @@ Write the anchor that would let someone reproduce the section, choosing the firs
 
 - **Mechanics and rules** — the class and method in the decompiled source, e.g. `Card.Decay`, `TraitBrewery`; after `split_decompiled.py` the file is `kb/src/classes/<Class>.cs`, in the single-file dump search the class name. Add the line range when you have it (`DNA.Relicize L113029`).
 - **Numbers, fields, tables** — the extracted table and the row key: `data/things_full.jsonl` `id=1050`, `data/charas_full.jsonl` `_index=251` (`_id=373`), `data/elements.jsonl`, `data/categories.json`, `data/jobs.json`.
-- **Names and text** — the language pack: `data/lang/Thing.json` (`id=1050`), or the in-game text file (The `.xlsx` files under `Package/_Lang_Chinese/Lang/CN/Game` are the translation tables, from which the language-pack JSON is exported). A `*r` placeholder in a row means that a random name is used, so look up `aka`; if `aka` is not found, state that as well. If the columns in that row are misaligned, state that as well. An entry is officially untranslated only when it is left blank; in that case, look for `name_JP` as a substitute. You need to state whether it is `*r` or left blank.
+- **Names and text** — the language pack: `data/lang/Thing.json` (`id=1050`), or the in-game text file. The `.xlsx` files under `Package/_Lang_Chinese/Lang/CN/Game` are the translation tables, from which the language-pack JSON is exported.
+  - **Untranslated entries** — some rows have misaligned language columns: `name` contains English while `name_EN` contains Japanese. Both cases indicate that no official Chinese translation exists. When exporting translation data, include every `*_EN` and `*_JP` column to preserve the original text.
+  - **Random names** — a `*r` placeholder in a row indicates that a random name is generated rather than a fixed name. Look up `aka` or `detail` for the corresponding name or description, and explicitly state that the original entry uses a `*r` placeholder. If neither field provides the relevant information, state that as well.
 - **Images** — the file in the game plus the crop parameters (`Package/_Elona/Texture/objs_C.png` tile 782 → row 24 col 14).
 - **Computed numbers** — state the formula instead of the number alone, and mark it estimated: `<!-- 来源：属性 = race + job 直接相加（races.json norland + jobs.json bard），技能按 Element.GetSourceValue 等级缩放 → 推算 -->`.
 - **Several claims in one section** — one comment holding one line per claim, still a single comment.
