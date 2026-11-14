@@ -1,0 +1,10 @@
+{
+  "name": "elin-decompile-toolkit-docs",
+  "private": true,
+  "scripts": {
+    "lint:md": "markdownlint-cli2"
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "0.24.1"
+  }
+}
