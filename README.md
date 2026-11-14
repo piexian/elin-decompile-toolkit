@@ -2,6 +2,7 @@
 
 > 英文版：[README_en.md](README_en.md)
 
+
 > [!TIP]
 > **懒人安装：把这句话发给你的 Agent**
 >
