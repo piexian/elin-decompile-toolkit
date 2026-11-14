@@ -1,11 +1,13 @@
 # Elin 反编译考据工具箱
 
 > 英文版：[README_en.md](README_en.md)
->
+
 > [!TIP]
 > **懒人安装：把这句话发给你的 Agent**
 >
-> 帮我安装 `piexian/elin-decompile-toolkit` 这个 Agent Skill。优先运行 `npx skills add piexian/elin-decompile-toolkit -y`；如果 GitHub 不可用，改用 `https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git`。安装后确认 `SKILL.md` 和 `scripts/` 同级，并运行 `python -m scripts --help` 验证。
+``` bash
+帮我安装 `piexian/elin-decompile-toolkit` 这个 Agent Skill。优先运行 `npx skills add piexian/elin-decompile-toolkit -y`；如果 GitHub 不可用，改用 `https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git`。安装后确认 `SKILL.md` 和 `scripts/` 同级，并运行 `python -m scripts --help` 验证。
+```
 给 AI Agent 用的 [Agent Skill](https://skills.sh)：从本地《Elin》提取官方数据、反编译源码、比较 Stable/Nightly 版本、生成 wiki 草稿和本地知识库。
 
 ## 安装
