@@ -1,6 +1,6 @@
 ---
 name: elin-decompile-toolkit
-description: Extract and verify data from the game Elin (Unity) — decompile Elin.dll, parse the official Chinese language pack and binary game assets, diff game versions, write wiki pages with per-section source annotations, and build a RAG knowledge base. Use when the user asks about Elin game mechanics, item/character names, official Chinese translations, recipe data, wiki articles, version changes, or wants a local LLM knowledge base from game data. Requires the game installed locally.
+description: Extract and verify data from the game Elin (Unity) — decompile Elin.dll, parse the official Chinese language pack and binary game assets, diff game versions, write wiki pages with per-section source annotations, and build a RAG knowledge base, or set up and use Elin MCP for source lookup and runtime testing. Use when the user asks about Elin game mechanics, item/character names, official Chinese translations, recipe data, wiki articles, version changes, or wants a local LLM knowledge base from game data. Requires the game installed locally.
 ---
 
 # Elin Decompilation Research Toolkit
@@ -48,6 +48,29 @@ cp -r . ~/.zcode/skills/elin-decompile-toolkit/
 ```
 
 **Verify before relying on it**, whichever route you took: confirm that `SKILL.md` and `scripts/steam_locate.py` exist in the same directory you are about to run from, then run `python scripts/steam_locate.py` and check it prints the game path. The scripts locate the workspace from their own path, so a shuffled or partial layout — `scripts/` is not optional — makes every one of them fail.
+
+## Optional: Elin MCP
+
+The official Elin MCP is separate from the public `Elin-Decompiled` dump.
+
+| Tooling | Use | Setup |
+|---|---|---|
+| `elin` | Remote source index, modding wiki, source-sheet schemas and game ids | Streamable HTTP at `https://mcp.elin-modding.net/`; no install, game files or API key |
+| `elin-runtime` | Run C#, console commands, screenshots, logs and hot-loaded Harmony patches in the installed game | Elin Runtime MCP mod, Node.js 20+, client restart |
+| Local decompile | Full-text search, offline work and versions newer than the index | .NET SDK 10+ and `ilspycmd` |
+
+`Elin-Decompiled` is a static dnSpy dump, not an MCP server or an install target. It only contains part of the assemblies, so use it as a public reference; use the local decompile when the indexed source or the public dump is incomplete.
+
+### Agent setup contract
+
+1. Inspect the connected tool list first. `elin_guide`, `elin_find`, `elin_versions` and related names mean the remote knowledge server is already connected; `elin_instances`, `elin_eval`, `elin_hotload` and related names mean the runtime server is already connected. Do not add a duplicate configuration entry.
+2. If a required server is missing, perform a read-only preflight and ask once whether the user wants the Agent to set up the missing MCP. The default is no installation. Continue with the local workflow when the user declines or the task does not need runtime control.
+3. After approval, follow the official procedure at `https://mcp.elin-modding.net/llms.txt`: merge the `elin` HTTP entry into the existing client configuration, locate the game, install the matching stable/nightly Runtime MCP release from `https://github.com/gottyduke/Elin.Plugins/releases`, verify the release digest before extraction, configure `node "<mod>/bridge/elin-mcp.mjs" --config`, install the two skills when supported, and restart the client. If an npm package is needed, retry once with `--registry=https://registry.npmmirror.com` without changing the global registry.
+4. Verify after restart with `elin_versions` and `elin_instances`. With the game closed, `elin_instances` returning no listening instance is correct. Compare the installed game version with the indexed channel before trusting source results.
+5. Runtime MCP can execute C# sent by a local client and listens on `127.0.0.1` ports `27551`–`27560`. Tell the user to disable the mod for normal play or set `Enabled = false` under `[Listener]` in `dk.elinplugins.runtimemcp.cfg`.
+6. If setup fails, report the dependency, command, exit or verification result, and the matching official page. Use the matching official page: [Elin MCP setup](https://mcp.elin-modding.net/llms.txt), [Elin MCP source](https://github.com/Elin-Modding-Resources/Elin.MCP), [Runtime MCP releases](https://github.com/gottyduke/Elin.Plugins/releases), [.NET SDK](https://dotnet.microsoft.com/download/dotnet/10.0), or [Node.js](https://nodejs.org/en/download). The verified domestic npm fallback is `https://registry.npmmirror.com` for npm packages only; no verified domestic mirror is assumed for the MCP endpoint or Runtime release.
+
+The current official MCP/local-decompile route uses .NET SDK 10+ and Node.js 20+ for the runtime bridge. Do not silently downgrade the prerequisite or substitute an unverified mirror.
 
 ## Two iron rules (read before drawing any conclusion)
 
@@ -137,7 +160,7 @@ Scripts that need the game path auto-locate it: the `ELIN_GAME_DIR` env var wins
 
 ## First-time setup
 
-Prerequisites: Python 3.8+ and .NET SDK 8+. The game must be installed. Everything runs on the standard library **except** `crop_chara_sprite.py`, which needs Pillow — install it only if you intend to crop sprites:
+Prerequisites: Python 3.8+ and .NET SDK 10+ for the current MCP and local decompile flow. The game must be installed. Everything runs on the standard library **except** `crop_chara_sprite.py`, which needs Pillow — install it only if you intend to crop sprites:
 
 ```bash
 pip install Pillow          # sole third-party dependency; skip it to stay stdlib-only

@@ -12,7 +12,23 @@ pip install Pillow    # 仅 crop_chara_sprite.py 需要；装到实际运行脚�
 
 ## 安装
 
-前置：本地已安装《Elin》（Steam 版会自动定位游戏目录，非 Steam 版用环境变量 `ELIN_GAME_DIR` 指定）。要跑反编译还需要 .NET SDK 8+ 和 `ilspycmd`。
+前置：本地已安装《Elin》（Steam 版会自动定位游戏目录，非 Steam 版用环境变量 `ELIN_GAME_DIR` 指定）。要跑反编译还需要 .NET SDK 10+ 和 `ilspycmd`。
+
+### 可选：接入 Elin MCP
+
+官方入口是 [`https://mcp.elin-modding.net/`](https://mcp.elin-modding.net/)，不是 `Elin-Decompiled` 源码转储。MCP 分为两部分：
+
+| 服务 | 用途 | 前置 |
+|---|---|---|
+| `elin` | 查询源码索引、Wiki、数据表结构和 ID | 远程 HTTP，无需安装或 API Key |
+| `elin-runtime` | 控制运行中的游戏，执行 C#、命令、截图、日志和热加载补丁 | Runtime MCP Mod、Node.js 20+、重启 Agent 客户端 |
+
+默认先检查 Agent 是否已有 `elin_guide`、`elin_find`、`elin_versions`、`elin_instances` 等工具，不自动安装。缺少服务且任务需要时，先询问是否由 Agent 配置；用户同意后按[官方 setup 流程](https://mcp.elin-modding.net/llms.txt)静默执行，合并已有配置、校验发布包摘要、重启客户端，并用 `elin_versions` 和 `elin_instances` 验证。
+
+Runtime MCP 能执行本地客户端发送的 C#，监听 `127.0.0.1:27551-27560`。普通游玩时请在 Mod 列表中关闭它，或在 `BepInEx/config/dk.elinplugins.runtimemcp.cfg` 设置 `Enabled = false`。
+
+安装失败时给出对应的官方页面：[`Elin MCP setup`](https://mcp.elin-modding.net/llms.txt)、[`Elin.MCP`](https://github.com/Elin-Modding-Resources/Elin.MCP)、[`Runtime MCP releases`](https://github.com/gottyduke/Elin.Plugins/releases)、[`.NET SDK 10`](https://dotnet.microsoft.com/download/dotnet/10.0)、[Node.js](https://nodejs.org/en/download)。
+需要安装 npm 包时，官方源失败可仅对本次命令使用 `--registry=https://registry.npmmirror.com`，不要修改全局 registry。当前没有已验证的 MCP 服务或 Runtime 发布包国内镜像，仍回退到上面的官方地址。
 
 ### 方式零：不装，直接用
 

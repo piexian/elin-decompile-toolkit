@@ -44,10 +44,19 @@ Checked in (not generated): `data/version_changes.json` — the version-change s
 | Book/reading-text files | `<game dir>/Package/<package>/Lang/<lang>/Text/Book/*.txt` (first line = `title,author,...`) |
 | Official Simplified Chinese language pack | `<game dir>/Package/_Lang_Chinese/Lang/CN/` |
 | Decompiled-code docs site (may lag the local version) | https://code.elin-modding.net/ |
+| Official Elin MCP endpoint | https://mcp.elin-modding.net/ — remote `elin` knowledge server; setup instructions at `/llms.txt` |
+| Elin MCP source and skill | https://github.com/Elin-Modding-Resources/Elin.MCP |
+| Public decompile dump | https://github.com/Elin-Modding-Resources/Elin-Decompiled — static reference, not an MCP server |
 | Chinese-language Elin wiki (target of the drafts) | https://elin.huijiwiki.com/ |
 | Wiki image-upload rules (categories, naming) | https://elin.huijiwiki.com/wiki/MediaWiki:Uploadfiles-info |
 
 The game directory is located automatically by `scripts/steam_locate.py` (`ELIN_GAME_DIR` env var first, then the Steam registry + `libraryfolders.vdf` + `appmanifest_2135150.acf`); run `python scripts/steam_locate.py` to verify on its own.
+
+## Optional Elin MCP integration
+
+The remote `elin` MCP at `https://mcp.elin-modding.net/` is the preferred indexed source for modding lookups. The local `elin-runtime` MCP can execute C#, inspect logs, take screenshots, and hot-load patches in the installed game. The public `Elin-Decompiled` repository is only a static source dump and is not an MCP server.
+
+Agents must inspect the connected tool list before setup, must not add duplicate MCP entries, and must not install anything by default. If a required server is missing, ask once whether the user wants setup; after approval follow `https://mcp.elin-modding.net/llms.txt`, verify release digests, restart the client, and run the documented checks. Runtime MCP executes code sent by a local client and should be disabled for normal play. Installation failures must include the command, verification result, and the matching official URL.
 
 ## Iron rules
 

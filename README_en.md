@@ -12,7 +12,23 @@ pip install Pillow    # only crop_chara_sprite.py needs it; install into the int
 
 ## Install
 
-Prerequisites: Elin installed locally (Steam installs are located automatically; for non-Steam copies set the `ELIN_GAME_DIR` environment variable). Decompiling additionally needs .NET SDK 8+ and `ilspycmd`.
+Prerequisites: Elin installed locally (Steam installs are located automatically; for non-Steam copies set the `ELIN_GAME_DIR` environment variable). Decompiling additionally needs .NET SDK 10+ and `ilspycmd`.
+
+### Optional: connect Elin MCP
+
+The official entry point is [`https://mcp.elin-modding.net/`](https://mcp.elin-modding.net/), not the `Elin-Decompiled` source dump. It provides two services:
+
+| Service | Use | Prerequisites |
+|---|---|---|
+| `elin` | Query the source index, modding wiki, source-sheet schemas and ids | Remote HTTP; no install or API key |
+| `elin-runtime` | Control the running game, execute C#, run commands, take screenshots, inspect logs and hot-load patches | Runtime MCP mod, Node.js 20+, client restart |
+
+First check whether the Agent already has tools such as `elin_guide`, `elin_find`, `elin_versions` or `elin_instances`; do not install by default. If a required service is missing and the task needs it, ask once whether the Agent should set it up. After approval, follow the [official setup procedure](https://mcp.elin-modding.net/llms.txt) non-interactively, merge existing configuration, verify the release digest, restart the client, and check `elin_versions` and `elin_instances`.
+
+Runtime MCP executes C# sent by a local client and listens on `127.0.0.1:27551-27560`. Disable it in the mod list for normal play, or set `Enabled = false` in `BepInEx/config/dk.elinplugins.runtimemcp.cfg`.
+
+If setup fails, report the failed dependency, command and verification result with the matching official page: [`Elin MCP setup`](https://mcp.elin-modding.net/llms.txt), [`Elin.MCP`](https://github.com/Elin-Modding-Resources/Elin.MCP), [`Runtime MCP releases`](https://github.com/gottyduke/Elin.Plugins/releases), [`.NET SDK 10`](https://dotnet.microsoft.com/download/dotnet/10.0), or [Node.js](https://nodejs.org/en/download).
+For npm packages, retry one failed official-registry command with `--registry=https://registry.npmmirror.com` without changing the global registry. No verified domestic mirror is assumed for the MCP endpoint or Runtime release; use the official pages above.
 
 ### Option 0: no install, just use it
 
