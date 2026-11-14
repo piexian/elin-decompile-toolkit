@@ -1,176 +1,79 @@
 # Elin Decompilation Research Toolkit
 
 > 简体中文版：[README.md](README.md)
-
-An [Agent Skill](https://skills.sh) for AI agents: extract official data from a locally installed copy of Elin and decompile its source — look up official Chinese names of items and characters, verify mechanics against decompiled code, diff game versions, and build a local LLM knowledge base. With this skill installed, an agent answers Elin questions from real game data instead of memory or second-hand wiki information.
-
-Pure Python standard library, with one exception: `crop_chara_sprite.py` (which crops character sprites out of the atlases) needs Pillow. Nothing else does — skip it if you never crop sprites.
-
-```bash
-pip install Pillow    # only crop_chara_sprite.py needs it; install into the interpreter that runs the scripts
-```
+>
+> [!TIP]
+> **Quick install: send this sentence to your Agent**
+>
+> Install the `piexian/elin-decompile-toolkit` Agent Skill for me. Prefer `npx skills add piexian/elin-decompile-toolkit -y`; if GitHub is unavailable, use `https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git`. After installation, verify that `SKILL.md` and `scripts/` are siblings and run `python -m scripts --help`.
+An [Agent Skill](https://skills.sh) for extracting official Elin data, decompiling source, comparing Stable/Nightly versions, generating wiki drafts and building a local knowledge base.
 
 ## Install
 
-Prerequisites: Elin installed locally (Steam installs are located automatically; for non-Steam copies set the `ELIN_GAME_DIR` environment variable). Decompiling additionally needs .NET SDK 10+ and `ilspycmd`.
+Requires a local Elin installation and Python 3.8+; decompilation also needs .NET SDK 10+ and `ilspycmd`. Sprite cropping needs Pillow.
 
-### Optional: connect Elin MCP
+```bash
+npx skills add piexian/elin-decompile-toolkit -y
+```
 
-The official entry point is [`https://mcp.elin-modding.net/`](https://mcp.elin-modding.net/), not the `Elin-Decompiled` source dump. It provides two services:
+If GitHub is inaccessible:
 
-| Service | Use | Prerequisites |
-|---|---|---|
-| `elin` | Query the source index, modding wiki, source-sheet schemas and ids | Remote HTTP; no install or API key |
-| `elin-runtime` | Control the running game, execute C#, run commands, take screenshots, inspect logs and hot-load patches | Runtime MCP mod, Node.js 20+, client restart |
+```bash
+npx skills add https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git -y
+```
 
-First check whether the Agent already has tools such as `elin_guide`, `elin_find`, `elin_versions` or `elin_instances`; do not install by default. If a required service is missing and the task needs it, ask once whether the Agent should set it up. After approval, follow the [official setup procedure](https://mcp.elin-modding.net/llms.txt) non-interactively, merge existing configuration, verify the release digest, restart the client, and check `elin_versions` and `elin_instances`.
-
-Runtime MCP executes C# sent by a local client and listens on `127.0.0.1:27551-27560`. Disable it in the mod list for normal play, or set `Enabled = false` in `BepInEx/config/dk.elinplugins.runtimemcp.cfg`.
-
-If setup fails, report the failed dependency, command and verification result with the matching official page: [`Elin MCP setup`](https://mcp.elin-modding.net/llms.txt), [`Elin.MCP`](https://github.com/Elin-Modding-Resources/Elin.MCP), [`Runtime MCP releases`](https://github.com/gottyduke/Elin.Plugins/releases), [`.NET SDK 10`](https://dotnet.microsoft.com/download/dotnet/10.0), or [Node.js](https://nodejs.org/en/download).
-For npm packages, retry one failed official-registry command with `--registry=https://registry.npmmirror.com` without changing the global registry. No verified domestic mirror is assumed for the MCP endpoint or Runtime release; use the official pages above.
-
-### Option 0: no install, just use it
-
-When you want one lookup without putting anything in a skills directory, let the CLI fetch the skill into a temp directory:
+For temporary use without installing:
 
 ```bash
 npx skills use "https://github.com/piexian/elin-decompile-toolkit" --skill "elin-decompile-toolkit" > skill.txt
-# If GitHub is unreachable, use the GitCode mirror (non-GitHub hosts need the .git suffix):
-npx skills use "https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git" --skill "elin-decompile-toolkit" > skill.txt
 ```
 
-The output is long — redirect it to a file and read that. It names the directory the supporting files were downloaded to; run the scripts from there, since they derive the workspace root from their own location and work from anywhere.
-
-### Option 1: skills CLI (recommended)
+Common options:
 
 ```bash
-npx skills add piexian/elin-decompile-toolkit
+npx skills add piexian/elin-decompile-toolkit -g                    # global
+npx skills add piexian/elin-decompile-toolkit -a zcode -a codex     # selected agents
+npx skills add piexian/elin-decompile-toolkit --copy                 # copy instead of symlink
 ```
 
-The CLI lists the agents it detected for you to pick (Claude Code / Codex / Cursor / Gemini CLI and about sixty more); the master copy goes into `.agents/skills/` and the other directories get symlinks. Useful flags:
+You can also copy the whole directory into an Agent's skills directory, such as `~/.agents/skills/`, `~/.claude/skills/` or project `.agents/skills/`; keep `SKILL.md` beside `scripts/`.
 
-```bash
-npx skills add piexian/elin-decompile-toolkit -g      # global instead of project-local
-npx skills add piexian/elin-decompile-toolkit -a zcode -a codex   # only the named agents
-npx skills add piexian/elin-decompile-toolkit -a '*'  # every agent the CLI knows about (55 directories, measured)
-npx skills add piexian/elin-decompile-toolkit --copy  # copy files instead of symlinking
-npx skills add piexian/elin-decompile-toolkit -y      # non-interactive, for CI / agent runs
-```
+The Agent checks dependencies first and does not install by default; after approval it runs non-interactively. Retry failed npm/PyPI commands with the documented domestic mirror only for that command. See [SKILL.md](SKILL.md) for dependency details.
 
-If GitHub is unreachable (e.g. from mainland China), use the GitCode mirror <https://gitcode.com/PIEXIAN/elin-decompile-toolkit> — both forms tested:
+## Optional: Elin MCP
 
-```bash
-npx skills add https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git
-```
-```bash
-GH_HOST=gitcode.com npx skills add piexian/elin-decompile-toolkit
-```
-
-The GitCode URL **must end with `.git`** — without the suffix the CLI treats it as a downloadable resource rather than a git repository and fails with "Downloaded URL is not a valid SKILL.md file or supported archive". Setting `GH_HOST` instead redirects the `owner/repo` shorthand to GitCode; all the flags above work as-is.
-
-You need [Node.js](https://nodejs.org/en) for `npx` only; the skill itself does not depend on it.
-
-### Option 2: manual copy
-
-Copy the whole `elin-decompile-toolkit/` directory into your agent's skills directory, keeping the folder name:
-
-| Agent | Global | Project |
-|---|---|---|
-| Universal (skills CLI master copy) | `~/.agents/skills/` | `.agents/skills/` |
-| Claude Code | `~/.claude/skills/` | `.claude/skills/` |
-| Codex | `~/.agents/skills/` (shares the canonical directory) | `.agents/skills/` |
-| ZCode | `~/.zcode/skills/` | `.zcode/skills/` |
-| Cursor / others that read SKILL.md | see their docs | see their docs |
-
-The installed layout must be `<skills dir>/elin-decompile-toolkit/SKILL.md`, with `SKILL.md` and `scripts/` in the same folder — the scripts derive the workspace root from their own location and stop working if the layout is shuffled.
-
-## What you can do with it
-
-The agent follows `SKILL.md` automatically. Typical prompts:
-
-- "How do I make cheese, and what tools does it need" — looks up the official name and game data first, then grounds the answer in decompiled code
-- "What is the official Chinese name of a fertilized egg" — checks the language pack; when no Chinese exists it keeps the original text and marks it, rather than inventing a translation
-- "The game updated — decompile it again and diff the changes" — runs the version-diff workflow and reports per-class changes
-- "Build an AstrBot knowledge base from the game data" — produces upload-ready aggregated chunks
-
-The two iron rules at the top of `SKILL.md` are the toolkit's core contract:
-
-1. **Names come from the official Chinese language pack only — never self-translate**; keep the EN/JP original marked "awaiting official translation" when no Chinese exists.
-2. **Mechanics conclusions must be grounded in decompiled code or game data**; community wikis are leads only.
-
-## Running the scripts directly (without an agent)
-
-The game path is auto-located (registry / `libraryfolders.vdf` / `appmanifest_2135150.acf`), or set `ELIN_GAME_DIR` / pass it as the first argument:
-
-```bash
-# 1. Official Chinese language pack xlsx → JSON (must run first; item extraction depends on it)
-python scripts/lang_xlsx_to_json.py data/lang
-# 2. Item rows and the material table
-python scripts/extract_things.py    data
-python scripts/extract_materials.py data
-# 3. Decompile the main DLL. Pass -r so Unity types resolve (without it a version diff drowns
-#    in ~60k lines of decompiler noise), and never assume the output encoding — it has been
-#    both cp936 and UTF-8 depending on the build, so try UTF-8 and fall back.
-mkdir -p src
-ilspycmd -r "<game dir>/Elin_Data/Managed" -o tmp_decomp "<game dir>/Elin_Data/Managed/Elin.dll"
-python - <<'PY'
-b = open('tmp_decomp/Elin.decompiled.cs','rb').read()
-try:    t = b.decode('utf-8-sig')
-except UnicodeDecodeError: t = b.decode('cp936')
-assert '\ufffd' not in t, 'transcode accident'
-open('src/Elin.decompiled.cs','w',encoding='utf-8',newline='\n').write(t.replace('\r\n','\n'))
-PY
-rm -r tmp_decomp
-# 4. Sanity check
-python scripts/lookup.py 奶酪
-```
-
-## Scripts
-
-| Script | Purpose |
+| Service | Purpose |
 |---|---|
-| `steam_locate.py` | Auto-locates the game directory; run `python scripts/steam_locate.py` to verify |
-| `lang_xlsx_to_json.py` | Official Chinese language pack xlsx → JSON |
-| `extract_things.py` | Extract item rows (with recipes) from sharedassets0.assets |
-| `extract_materials.py` | Extract the material table (incl. decay values) |
-| `extract_thing_rows.py` | Strictly parse SourceThing/Category/SpawnList → `things_full.jsonl` + `categories.json` + `spawnlists.json` |
-| `extract_chara_rows.py` | Strictly parse SourceChara/Race/Job → `charas_full.jsonl` + `races.json` + `jobs.json` |
-| `extract_zone_rows.py` | Strictly parse SourceZone → `zones_full.json` (aborts if ids disagree with the language pack) |
-| `extract_quest_rows.py` | Strictly parse SourceQuest → `quests_full.json` |
-| `extract_elements.py` | Parse the SourceElement table (feats/skills/spells with weights and slots) |
-| `split_decompiled.py` | Split the single-file decompile into per-class files |
-| `diff_by_class.py` | Attribute a version diff to classes, sorted by churn |
-| `diff_lang.py` | Row-level diff of the language tables |
-| `lookup.py` | All-in-one lookup (id / CN / EN / JP + recipes) |
-| `gen_character_pages.py` | Generate character-page drafts in the fullest site format |
-| `gen_chara_table.py` | Regenerate the site's 603-row `[[角色表]]` from `charas_full.jsonl` |
-| `gen_zone_pages.py` | Generate missing location-page drafts, titled by the site's `模板:地点导航` |
-| `crop_chara_sprite.py` | Crop character sprites / item icons from the atlases (**needs Pillow**; the wiki does not accept screenshots) |
-| `build_corpus.py` | Rebuild the RAG corpus (one .md per entity) |
-| `build_embed_chunks.py` | Rebuild aggregated AstrBot upload chunks + MANIFEST.md |
+| Remote `elin` | Query the source index, wiki, table schemas and IDs without a local install |
+| `elin-runtime` | Control the running game: C#, commands, screenshots, logs and hot-loading |
 
-`update_chara_ylv.py` (merges Ylvapedia cross-check data) and `gen_god_pages.py` (god sub-page drafts) are maintainer-workspace only: the former reads `notes/ylvapedia/` and rewrites `drafts/characters/`, the latter needs a `data/religions.json` that no extractor in this repo produces. Neither ships here.
+Ask the Agent to follow the [official setup](https://mcp.elin-modding.net/llms.txt). Runtime requires its mod, Node.js 20+ and a client restart; disable Runtime MCP for normal play.
 
-The full workflows for version diffing and knowledge-base building are in `SKILL.md`; the "Version-diff lessons from practice" section there uses a real diff (EA 23.345 → 23.349) to show how to read per-class conclusions and how to find new content from language-pack deltas.
+## Use
 
-## Known pitfalls
-
-- **Never assume `ilspycmd`'s output encoding**: the redirect form follows the Windows console code page (GBK on Chinese machines), while the `-o <dir>` form has shipped both cp936 and UTF-8 across builds. Reading it as UTF-8 raises `UnicodeDecodeError`; bypassing with `errors='ignore'` turns Japanese into mojibake, easily misread as "the game changed this string". Always try `utf-8-sig`, fall back to `cp936`, assert no U+FFFD, and normalize CRLF to LF before diffing — otherwise a 2-line real change shows up as a 458k-line phantom diff.
-- Untranslated rows in the language pack carry a `*r` placeholder in the `name` column; the real names sit in `name_JP` / `detail_JP` and similar columns, so export those too.
-- `extract_things.py` needs the language pack to locate row starts — running it without the pack produces 0 rows (the script prints a warning).
-- Never put intermediate files in `/tmp`: Git Bash and Windows Python resolve it differently.
-
-## Directory structure
-
-```
-elin-decompile-toolkit/
-├── SKILL.md            agent entry point (frontmatter + workflows + iron rules + pitfalls)
-├── AGENTS.md           repo conventions (auto-read by most agents)
-├── README.md           this file's Chinese original
-├── README_en.md        this file
-├── data/version_changes.json  version-change source table (rendered into the corpus)
-└── scripts/            19 Python scripts (only crop_chara_sprite.py needs Pillow)
+```bash
+python -m scripts check --game <game-dir>
+python -m scripts workspace init --channel stable --version <version> --game <game-dir> --root work
+WS=work/stable/<version>
+python -m scripts data extract --workspace "$WS" --game <game-dir> --all
+python -m scripts decompile --workspace "$WS" --game <game-dir> --project
+python -m scripts lookup thing cheese --workspace "$WS"
+python -m scripts corpus build --workspace "$WS"
+python -m scripts chunks --workspace "$WS"
 ```
 
-Generated data (`data/`, `src/`, `kb/`) stays out of the repo, see `.gitignore`.
+Outputs stay in `work/<channel>/<version>/`; Stable and Nightly remain separate.
+
+| Command | Purpose |
+|---|---|
+| `data extract --all` | Export official language data, items, materials, elements, characters, zones, quests and religions |
+| `decompile` / `source split` | Decompile and split source into classes |
+| `diff code` / `diff lang` | Compare source and language data between isolated versions |
+| `lookup` | Search official Chinese/English/Japanese names and IDs |
+| `corpus build` / `chunks` | Build the RAG corpus and AstrBot upload chunks |
+| `pages` / `sprites` | Generate character, zone and god drafts and crop atlas sprites |
+| `ylvapedia fetch` / `pages enrich-ylvapedia` | Cache and generate source-stamped external review supplements |
+
+Official Chinese names and local game data take precedence; never self-translate. Ylvapedia is supplementary only. Detect strict UTF-8/GBK `ilspycmd` output, preserve language-pack `*r` placeholders, and do not mix versions or use partial parses.
+
+See [SKILL.md](SKILL.md) for all options, version diffs, knowledge-base workflows, MCP installation and troubleshooting.

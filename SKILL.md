@@ -1,11 +1,13 @@
 ---
 name: elin-decompile-toolkit
 description: Extract and verify data from the game Elin (Unity) — decompile Elin.dll, parse the official Chinese language pack and binary game assets, diff game versions, write wiki pages with per-section source annotations, and build a RAG knowledge base, or set up and use Elin MCP for source lookup and runtime testing. Use when the user asks about Elin game mechanics, item/character names, official Chinese translations, recipe data, wiki articles, version changes, or wants a local LLM knowledge base from game data. Requires the game installed locally.
+metadata:
+  version: "0.1.0"
 ---
 
 # Elin Decompilation Research Toolkit
 
-A set of Python scripts — standard library only, with the single exception of `crop_chara_sprite.py`, which needs Pillow — that extract official data from a locally installed copy of Elin and decompile its source: for writing wiki pages, answering mechanics questions, diffing game versions, and building an LLM knowledge base. Every script derives the workspace root from its own location, so the folder can live anywhere.
+A workspace-bound Python CLI that extracts official data from a locally installed copy of Elin, decompiles its source, compares Stable/Nightly versions, writes wiki drafts and builds an LLM knowledge base.
 
 ## Getting this toolkit (for the agent reading this)
 
@@ -22,7 +24,7 @@ npx skills use "https://github.com/piexian/elin-decompile-toolkit" --skill "elin
 
 If GitHub is unreachable, the same command works against the GitCode mirror: use `https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git` as the URL — a non-GitHub host must carry the `.git` suffix, or the CLI misparses it as a downloadable resource.
 
-Resolve every relative path in this file — `scripts/`, `data/` — against that downloaded directory, not against the user's project and not against an installed copy.
+Resolve every relative path in this file — `scripts/`, `data/` — against that downloaded directory, not against the user's project.
 
 **Install for reuse** when the user asks for it, or when you want the toolkit available in later sessions:
 
@@ -41,13 +43,13 @@ When GitHub is unreachable, point the same command at the GitCode mirror: the fu
 | ZCode | `~/.zcode/skills/` |
 | Generic `SKILL.md` readers (Cursor, …) | see that agent's documentation |
 
-To install without Node.js, copy this whole folder instead, so that `SKILL.md` and `scripts/` stay siblings:
+To install without Node.js, copy this whole folder instead, keeping `SKILL.md` beside the `scripts/` package:
 
 ```bash
 cp -r . ~/.zcode/skills/elin-decompile-toolkit/
 ```
 
-**Verify before relying on it**, whichever route you took: confirm that `SKILL.md` and `scripts/steam_locate.py` exist in the same directory you are about to run from, then run `python scripts/steam_locate.py` and check it prints the game path. The scripts locate the workspace from their own path, so a shuffled or partial layout — `scripts/` is not optional — makes every one of them fail.
+**Verify before relying on it**: confirm that `SKILL.md` and `scripts/` are siblings, then run `python -m scripts --help` and `python -m scripts check --game <game-dir>`.
 
 ## Optional: Elin MCP
 
@@ -85,14 +87,14 @@ Every section of a wiki page ends with a source annotation written as a MediaWik
 == 获得方式 ==
 * 完成[[索林]]的遗物剧情后获得遗物槽位（EA 23.350 起），剧情结算时身上没有槽位会自动追加一个。
 * 在装饰台制作：[[宝石]] ×1 ＋ [[基因]] ×1 ＋ [[树脂]] ×25 → '''宿卵'''（relic_lesser，暂无官方中文）。
-<!-- 来源：槽位追加与「完成 into_darkness 任务自动赠送」两处逻辑 TraitSorin / RelicSlot（src/Elin.decompiled.cs，按类拆到 kb/src/classes/）；配方与材料数量 data/things_full.jsonl id=<宿卵> 的 recipe 段 -->
+<!-- 来源：槽位追加与「完成 into_darkness 任务自动赠送」两处逻辑 TraitSorin / RelicSlot（workspace/src/，按类拆到 workspace/kb/source/classes/）；配方与材料数量 workspace/data/things_full.jsonl id=<宿卵> 的 recipe 段 -->
 ```
 
 Put the comment at the end of the section body, right before the next heading. A summary block at the top of the file is a useful supplement but never replaces the per-section comments.
 
 Write the anchor that would let someone reproduce the section, choosing the first form that applies:
 
-- **Mechanics and rules** — the class and method in the decompiled source, e.g. `Card.Decay`, `TraitBrewery`; after `split_decompiled.py` the file is `kb/src/classes/<Class>.cs`, in the single-file dump search the class name. Add the line range when you have it (`DNA.Relicize L113029`).
+- **Mechanics and rules** — the class and method in the decompiled source, e.g. `Card.Decay`, `TraitBrewery`; use `workspace/src/` or `workspace/kb/source/classes/<Class>.cs`. Add the line range when you have it (`DNA.Relicize L113029`).
 - **Numbers, fields, tables** — the extracted table and the row key: `data/things_full.jsonl` `id=1050`, `data/charas_full.jsonl` `_index=251` (`_id=373`), `data/elements.jsonl`, `data/categories.json`, `data/jobs.json`.
 - **Names and text** — the language pack: `data/lang/Thing.json` (`id=1050`), or the in-game text file. The `.xlsx` files under `Package/_Lang_Chinese/Lang/CN/Game` are the translation tables, from which the language-pack JSON is exported.
   - **Untranslated entries** — some rows have misaligned language columns: `name` contains English while `name_EN` contains Japanese. Both cases indicate that no official Chinese translation exists. When exporting translation data, include every `*_EN` and `*_JP` column to preserve the original text.
@@ -126,92 +128,123 @@ Every file needs a category, otherwise other editors cannot find it. Add it from
 Naming rules:
 
 - Portraits come out of `<game dir>/Package/_Elona/Portrait/`; upload them under the file's own name (`UN_<chara id>.png`). The English wiki's name is accepted too.
-- Sprites must never be screenshots. Export them from the atlas (`crop_chara_sprite.py`, see "Known pitfalls") or download them from the English wiki. A screenshot drags the UI background along and carries the wrong pixel scale.
+- Sprites must never be screenshots. Export them from the atlas (`scripts sprites`, see "Known pitfalls") or download them from the English wiki. A screenshot drags the UI background along and carries the wrong pixel scale.
 - Names should say what the file is. `截图10395781826482364.jpg` gets deleted; `Elin_Npc_Sprite_Moyer.png` survives. English and Chinese names are both fine, mojibake is not.
 - Local `_8x` previews stay local: the wiki scales pixel art in place with `{{像素图放大|[[File:x.png|240px]]}}`, so uploading an enlarged copy only adds a redundant file.
 
 After overwriting an existing file, check the pages that use it and confirm they still render — the size arguments in `[[File:...|150px]]` and the `{{像素图放大}}` template both depend on the pixel dimensions of the file itself.
 
-## Scripts
+## Unified CLI
 
-| Script | Purpose | Invocation |
-|---|---|---|
-| `lang_xlsx_to_json.py` | Official Chinese language pack xlsx → JSON | `[<pack dir>] <outdir>`; auto-located when omitted |
-| `extract_things.py` | Extract item rows (with recipes) from sharedassets0.assets | `[<game dir>] <outdir>`; auto-located when omitted |
-| `extract_materials.py` | Extract the material table (incl. decay values) | same |
-| `extract_elements.py` | Extract the SourceElement table (enchant/skill/spell rows with weights, slots, tags) | same |
-| `extract_thing_rows.py` | Strictly parse SourceThing / SourceCategory / SourceSpawnList: full item fields (category, value, spawn weight, tags), the category parent tree, and shop/gacha spawn-list definitions → `things_full.jsonl` + `categories.json` + `spawnlists.json` | same |
-| `extract_chara_rows.py` | Strictly parse SourceChara / SourceRace / SourceJob: character rows (level, race, job, bio, works/hobbies) plus race/job stat blocks → `charas_full.jsonl` + `races.json` + `jobs.json`; requires `extract_thing_rows.py` in the same directory | same |
-| `extract_zone_rows.py` | Strictly parse SourceZone → `zones_full.json` (zone/town/dungeon rows); aborts non-zero if the id set disagrees with `lang/Zone.json` | `[<game dir>] <outdir>`; auto-located when omitted |
-| `extract_quest_rows.py` | Strictly parse SourceQuest → `quests_full.json` (quest definitions); same id check against `lang/Quest.json` | same |
-| `gen_chara_table.py` | Regenerate the site's 603-row `[[角色表]]` from `charas_full.jsonl` (names from `lang/Chara.json`, abilities from `lang/Element.json`) | `[<output md>]`; defaults to `tmp/角色表-重生成.md` |
-| `gen_zone_pages.py` | Generate missing location-page drafts from `zones_full.json` + `lang/Zone.json`, titled by the site's own `模板:地点导航` link text | `<outdir>` |
-| `update_chara_ylv.py` | Merge Ylvapedia cross-check data into `drafts/characters/` drafts (EN/JA bestiary numeric blocks). **Maintainer-only** — reads `notes/ylvapedia/*.txt` and rewrites `drafts/characters/`, neither of which ships in this repo | `[<chara id> ...]`; all 30 when omitted |
-| `gen_god_pages.py` | Generate `神/<name>` sub-page drafts from `data/religions.json`. **Maintainer-only** — no SourceReligion extractor ships here, so that table has to be produced in the maintainer workspace | `<outdir>` |
-| `crop_chara_sprite.py` | Crop character sprites / item icons out of the game atlases by the game's own replace-texture rule (the only allowed way to produce a sprite — screenshots are not accepted by the wiki) | `python scripts/crop_chara_sprite.py <id> [id ...]`; needs Pillow, the one script that is not stdlib-only |
-| `steam_locate.py` | Shared game-dir locator; also runnable standalone | `python scripts/steam_locate.py` |
-| `split_decompiled.py` | Split the single-file decompile into per-class files (text search and corpus only — a C# language server needs the `ilspycmd -p` project instead, since these files carry no `using` headers) | `[<src.cs>] [<outdir>]`; defaults to `kb/src/classes` |
-| `diff_by_class.py` | Attribute a version diff to classes, sorted by churn | `<old.cs> <new.cs> <unified diff file>` |
-| `diff_lang.py` | Row-level diff of the language tables | `<old lang dir> <new lang dir>` |
-| `lookup.py` | All-in-one lookup (id / CN / EN / JP + recipes) | `python scripts/lookup.py 奶酪` |
-| `gen_character_pages.py` | Generate character-page drafts (reads the game binary) | `[<game dir>]`; auto-located when omitted |
-| `build_corpus.py` | Rebuild `kb/corpus` (RAG corpus) | no args |
-| `build_embed_chunks.py` | Rebuild `kb/embed_ready` (AstrBot upload chunks) | `[WebUI chunk size]`, default 2048 |
+All extraction, decompilation, version comparison, lookup, corpus and page generation now use the workspace-bound CLI. Do not call removed legacy scripts.
 
-Scripts that need the game path auto-locate it: the `ELIN_GAME_DIR` env var wins, then the Windows registry / platform default paths for Steam, then `libraryfolders.vdf` enumerates the libraries, then `appmanifest_2135150.acf` provides `installdir`, and the result is only accepted if `Elin_Data/Managed/Elin.dll` exists. The detected path is printed. `extract_materials.py` does `from extract_things import ...`, so always run it as `python scripts/extract_materials.py` — never `cd scripts` first.
+```bash
+python -m scripts --help
+python -m scripts check --game <game-dir>
+python -m scripts workspace init --channel stable --version <version> --game <game-dir> --root work
+WS=work/stable/<version>
+python -m scripts data extract --workspace "$WS" --game <game-dir> --all
+python -m scripts decompile --workspace "$WS" --game <game-dir> --project
+python -m scripts source split --workspace "$WS"
+python -m scripts lookup thing 奶酪 --workspace "$WS"
+python -m scripts corpus build --workspace "$WS"
+python -m scripts chunks --workspace "$WS"
+```
+
+| Command | Purpose |
+|---|---|
+| `check` / `workspace init` | Validate the game and create a Stable/Nightly workspace with `version.json` |
+| `data extract --all` | Export the language pack and strictly parse Thing, Material, Element, Chara, Zone, Quest and Religion tables |
+| `decompile` | Run `ilspycmd`, normalize source encoding and record the DLL hash |
+| `source split` | Split a single dump or project source into `kb/source/classes` for optional code chunks |
+| `diff code` / `diff lang` | Compare two isolated workspaces by source type and language-table entity ID |
+| `lookup` | Search official names and strict item/material data |
+| `corpus build` / `chunks` | Build RAG corpus and AstrBot upload files inside the workspace |
+| `pages` / `sprites` | Generate wiki drafts and crop verified atlas sprites |
+| `pages gods` | Generate god/apostle drafts from strict SourceReligion data and official names |
+| `ylvapedia fetch` / `revisions` | Cache optional Ylvapedia page wikitext with revision and fetch metadata |
+| `pages enrich-ylvapedia <ids>` | Produce review-only character supplements without overwriting official fields |
+
+`--game` overrides workspace discovery. Without it, the CLI checks the workspace registration, `ELIN_GAME_DIR` and Steam libraries. Every command fails non-zero on incomplete data; do not continue after a partial parse.
+
+### Optional Ylvapedia enrichment
+
+Use the official `https://ylvapedia.wiki/api.php` MediaWiki API for optional external supplements:
+
+```bash
+python -m scripts ylvapedia revisions --workspace work/stable/<version> --page "Elin:Bestiary/Unique_NPCs"
+python -m scripts ylvapedia fetch --workspace work/stable/<version> --page "Elin:Bestiary/Unique_NPCs"
+python -m scripts pages enrich-ylvapedia --workspace work/stable/<version> loytel poppy
+python -m scripts pages gods --workspace work/stable/<version>
+```
+
+Use `SourceReligion` and the official language pack for god/apostle names and fields. Ylvapedia is only a supplementary source: cache page wikitext under the workspace, record page URL, revision ID, fetch time and response hash, and never overwrite official Chinese names or local source data. Fetch individual pages rather than crawling the site; honor `429`/`Retry-After`, use the MediaWiki etiquette, and respect the site's `ai-train=no` signal. `action=ask`/`askargs` are available, but do not assume every page has Semantic MediaWiki properties; use `parse/wikitext` and page-specific parsing.
+
+The CLI outputs stay under `work/<channel>/<version>/`; never mix Stable and Nightly data or write generated output to repository-level `data/`, `src/` or `kb/`.
+
+### Migration checks for agents
+
+Before relying on an existing workspace, inspect the downloaded Skill directory and the chosen `work/<channel>/<version>/` directory:
+
+- Require `scripts/`, `data/version_changes.json` and a valid workspace `version.json`.
+- Check `channel`, version, DLL/assets hashes and that generated data, source and `kb/` all come from the same workspace.
+- Reject mixed Stable/Nightly data, incomplete row/ID validation, or legacy root-level `data/`, `src/` and `kb/` used as current output.
+- If a legacy script command or old output is found, stop the pipeline and migrate through the CLI; do not delete user files automatically. Report the failing command and evidence, then repair the new implementation before continuing.
+- Do not create test files or upload local verification fixtures. Use temporary local fixtures outside the repository for validation and remove them afterwards.
 
 ## First-time setup
 
-Prerequisites: Python 3.8+ and .NET SDK 10+ for the current MCP and local decompile flow. The game must be installed. Everything runs on the standard library **except** `crop_chara_sprite.py`, which needs Pillow — install it only if you intend to crop sprites:
+Prerequisites are Python 3.8+, an installed Elin copy, and .NET SDK 10+ plus `ilspycmd` only for decompilation. Node.js 20+ is needed only for the Runtime MCP bridge; Pillow is needed only for `sprites`.
 
-```bash
-pip install Pillow          # sole third-party dependency; skip it to stay stdlib-only
+The Agent first performs a read-only dependency and game preflight. It does not install by default. If a required dependency is missing, ask once whether the Agent should install it; after approval run the commands non-interactively and verify each version. On Windows, approved SDK/runtime installation can use:
+
+```powershell
+winget install --id Python.Python.3.12 --exact --silent --accept-source-agreements --accept-package-agreements
+winget install --id Microsoft.DotNet.SDK.10 --exact --silent --accept-source-agreements --accept-package-agreements
+winget install --id OpenJS.NodeJS.LTS --exact --silent --accept-source-agreements --accept-package-agreements
 ```
 
-The sprite script fails at import with `ModuleNotFoundError: No module named 'PIL'` when Pillow is missing, which is expected and does not affect any other script. Install it into the same interpreter that runs the scripts (`python -m pip install Pillow` if `pip` points elsewhere).
+Install the remaining tools only when needed:
 
 ```bash
-dotnet tool install -g ilspycmd
-
-# The language pack must be extracted first (extract_things uses it to locate row starts); game path is auto-located
-python scripts/lang_xlsx_to_json.py data/lang
-python scripts/extract_things.py    data
-python scripts/extract_materials.py data
-
-# Decompile with reference assemblies (-r): without it Unity types fail to resolve and version
-# diffs drown in ~60k lines of decompiler-style noise. -o writes a directory; encoding has varied
-# between builds, so the transcode below tries UTF-8 first and falls back to the console code page.
-# Keep intermediates inside the project; never /tmp.
-mkdir -p src
-ilspycmd -r "<game dir>/Elin_Data/Managed" -o tmp_decomp "<game dir>/Elin_Data/Managed/Elin.dll"
-python - <<'PY'
-b = open('tmp_decomp/Elin.decompiled.cs','rb').read()
-try:    t = b.decode('utf-8-sig')
-except UnicodeDecodeError: t = b.decode('cp936')
-assert '\ufffd' not in t, 'transcode accident'
-open('src/Elin.decompiled.cs','w',encoding='utf-8',newline='\n').write(t.replace('\r\n','\n'))
-PY
-rm -r tmp_decomp
-
-python scripts/lookup.py 奶酪      # sanity check: items + recipes found means the pipeline works
-python scripts/split_decompiled.py # split into kb/src/classes for per-class retrieval
+dotnet tool install --global ilspycmd
+python -m pip install Pillow
+# If the official PyPI request fails, retry only this command:
+python -m pip install Pillow --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 ```
+
+If installation fails, report the command, exit result and official page: [Python](https://www.python.org/downloads/), [.NET 10](https://dotnet.microsoft.com/download/dotnet/10.0), [ilspycmd/ILSpy](https://github.com/icsharpcode/ILSpy), [Pillow](https://pypi.org/project/Pillow/), [Node.js](https://nodejs.org/en/download) or [winget](https://learn.microsoft.com/windows/package-manager/winget/). Do not silently switch the MCP endpoint or Runtime release to an unverified mirror.
+
+Create a workspace for every channel/version and never reuse its data between Stable and Nightly:
+
+```bash
+python -m scripts check --game <game-dir>
+python -m scripts workspace init --channel stable --version <version> --game <game-dir> --root work
+WS=work/stable/<version>
+python -m scripts data extract --workspace "$WS" --game <game-dir> --all
+python -m scripts decompile --workspace "$WS" --game <game-dir> --project
+python -m scripts source split --workspace "$WS"      # optional code chunks
+python -m scripts lookup thing 奶酪 --workspace "$WS"
+python -m scripts corpus build --workspace "$WS"
+python -m scripts chunks --workspace "$WS"
+```
+
+`data extract --all` stops on row-count, ID-set, JSON or asset errors. `decompile` records the DLL hash and normalizes output to UTF-8. Use `python -m scripts diff code` and `diff lang` only between complete workspaces.
 
 ## After a game update
 
+Create a new workspace instead of overwriting the previous one:
+
 ```bash
-cp src/Elin.decompiled.cs src/versions/Elin.decompiled.<old-version>.cs   # archive the old one
-# re-run the three data steps + the decompile from "First-time setup", then diff:
-diff -u src/versions/Elin.decompiled.<old>.cs src/Elin.decompiled.cs > src/versions/code_diff.txt
-python scripts/diff_by_class.py src/versions/Elin.decompiled.<old>.cs src/Elin.decompiled.cs src/versions/code_diff.txt
-python scripts/diff_lang.py <old lang dir> data/lang
-# re-deploy the source dir that the search plugin/LSP reads (project mode, with its csproj):
-mkdir -p src/elin-<new-version>
-ilspycmd -p -r "<game dir>/Elin_Data/Managed" -o src/elin-<new-version> "<game dir>/Elin_Data/Managed/Elin.dll"
-# + version.json in that directory; see "Building an AstrBot knowledge base"
+python -m scripts workspace init --channel nightly --version <new-version> --game <game-dir> --root work
+NEW=work/nightly/<new-version>
+python -m scripts data extract --workspace "$NEW" --game <game-dir> --all
+python -m scripts decompile --workspace "$NEW" --game <game-dir> --project
+python -m scripts diff code --old work/stable/<old-version> --new "$NEW"
+python -m scripts diff lang --old work/stable/<old-version> --new "$NEW"
 ```
 
-`diff_by_class.py` attributes diff lines to their enclosing type and sorts by churn — the fastest way to tell whether an existing conclusion was touched by this update. The next section is a worked example.
+Promote a Nightly snapshot to a Stable comparison only after checking the channel and manifest hashes. Compare rows by entity ID, never by `_index`; the CLI enforces this for language tables and strict data outputs.
 
 When diffing the extracted tables, join rows **on the entity id, never on `_index`**: that field is the chain position inside the binary, so inserting new rows shifts every later one and a handful of real changes reads as thousands (23.358 added 18 thing rows; an `_index` join reported 2483 "changed" rows with tiles/value/pref all jittering, while the id join showed exactly 18 additions and the changes that actually happened).
 
@@ -219,7 +252,7 @@ When diffing the extracted tables, join rows **on the entity id, never on `_inde
 
 Taken from a real diff, EA 23.345 → 23.349 (four nightly batches):
 
-- `diff_by_class.py` reported 62 changed types, yet after per-class checks **every previously researched mechanic survived byte-identical** — fermentation (`TraitBrewery` / `TraitAgingShelf` / `TraitDryBrick` / `TraitContainerCompost`), decay (`Card.Decay`), relics (`DNA` / `BodyCode`). The apparent changes were false signals: a deleted `Debug.Log` (`TraitFoodEggFertilized`), an equivalent short-circuit (`TraitCrafter`'s `Contains('@')`), a render parameter (`Card`'s `renderer.sync`). **Open the class and read the lines before concluding anything.**
+- `scripts diff code` reported 62 changed types, yet after per-class checks **every previously researched mechanic survived byte-identical** — fermentation (`TraitBrewery` / `TraitAgingShelf` / `TraitDryBrick` / `TraitContainerCompost`), decay (`Card.Decay`), relics (`DNA` / `BodyCode`). The apparent changes were false signals: a deleted `Debug.Log` (`TraitFoodEggFertilized`), an equivalent short-circuit (`TraitCrafter`'s `Contains('@')`), a render parameter (`Card`'s `renderer.sync`). **Open the class and read the lines before concluding anything.**
 - The bulk of the churn is rendering/UI refactoring (`BaseTileMap` ±1500 lines, `CardRenderer` ±280). Filter those out by churn first, then look at mechanics classes.
 - Typical shape of an Elin update — look for: new mechanics (Time Stop: `ActTimeStop` / `ConTimeStop` + element 433 `negateTimeStop` + Stat 112), new monster families (`CTAG.nurse`, nurses now heal hostile targets too), new furniture and zones (`TraitDoorBig` + `Zone_AcademyRoran`), modding UI (`ModGroup`).
 - **Language-pack deltas are the fastest index of new content**: `Package/_Lang_Chinese/Lang/CN/update.txt` lists each table's latest row count; diff it against the previous extraction (that update: Thing 2514→2585, Element 1075→1122, Chara 593→598, Category 140→141).
@@ -234,24 +267,15 @@ Taken from a real diff, EA 23.345 → 23.349 (four nightly batches):
 ## Building an AstrBot knowledge base
 
 ```bash
-python scripts/build_corpus.py          # kb/corpus: one .md per entity
-python scripts/build_embed_chunks.py    # kb/embed_ready: aggregated upload chunks + MANIFEST.md
+python -m scripts corpus build --workspace work/stable/<version>
+python -m scripts source split --workspace work/stable/<version>   # only when --code is needed
+python -m scripts chunks --workspace work/stable/<version>          # data/doc chunks
+python -m scripts chunks --workspace work/stable/<version> --code  # include split source classes
 ```
 
-Since EA 23.356 the embedded corpus carries **translation/data chunks only** — `build_embed_chunks.py` defaults to `SKIP_CODE = True` and skips the per-class code chunks entirely. Source-code questions are answered by the local companion plugin `astrbot_plugin_self_file_search` (grep + LSP over `src/elin-<version>/`), which is both cheaper and always current; flip `SKIP_CODE` back to `False` only if you specifically want code inside the vector store.
+`kb/embed_ready/` is the upload directory; `kb/MANIFEST.md` stays outside it. The manifest records the workspace version and the chunk setting. Use chunk size 2048, overlap 100, dense retrieval 15 and sparse retrieval 15 unless the target WebUI requires another fixed profile. Rebuild the workspace output after changing the size.
 
-That directory has to be the **`ilspycmd -p` project output** — `Elin.csproj` (auto-referencing the game's `Managed` DLLs by HintPath) plus one file per type, each keeping its `using` block. Point a C# language server at anything else and it fails to start: a folder of loose `.cs` files makes csharp-ls throw `System.Exception: no or .csproj/.fsproj or sln files found`, and the per-class split from `split_decompiled.py` cannot be rescued by dropping in a csproj, because those files have no `using` headers at all. Deploy with
-
-```bash
-ilspycmd -p -r "<game dir>/Elin_Data/Managed" -o src/elin-<version> "<game dir>/Elin_Data/Managed/Elin.dll"
-# then write src/elin-<version>/version.json: {"version": "...", "versionText": "...", "buildDate": "...", "channel": "..."}
-```
-
-Keep `version.json` in the root — the plugin stamps its answers with it. To confirm semantic search after a version swap, drive the server headlessly: initialize with `rootUri`/`workspaceFolders` = that directory, `didOpen` one large file, then `textDocument/documentSymbol` and a cross-file `textDocument/definition`/`references`. For EA 23.358 that returned 515 symbols for `Chara.cs`, resolved `Card` to `Card.cs:9` and found 1810 references to `Chara`.
-
-`kb/embed_ready/` is the **aggregated** upload directory — upload the whole folder to the AstrBot WebUI (the human-facing checklist lands one level up, `kb/MANIFEST.md`, outside the upload folder). Settings must match the directory: **chunk size 2048, overlap 100, dense retrieval 15, sparse retrieval 15**. Changing the chunk size means re-running `build_embed_chunks.py <new chunk size>`.
-
-The packing mirrors AstrBot's own chunker (selected in `astrbot/core/knowledge_base/kb_helper.py`, implemented in `chunking/markdown.py`): `.md` files go through `MarkdownChunker`, every markdown heading becomes its own chunk, bodies within the chunk size are not split further, and `min_chunk_size` defaults to 0 — **adjacent short chunks are never merged**. That is why "one file per entity" makes every entity cost its own embedding call, an order of magnitude more calls than the content justifies. **A stray line before the first heading also becomes its own chunk**: the per-file `<!-- source_type: ... | version: ... -->` header comment showed up as a ~70-char chunk that flooded retrieval results (2026-10-11), so aggregated files must start with a heading and carry no preamble — version stamps live in `MANIFEST.md` only. **Keep the corpus self-contained**: the chatbot's only knowledge access is the builtin `astr_kb_search` tool (it cannot read files, and AstrBot's `_format_context` already prepends `来源: kb/file` to every chunk), so never embed local paths — code class markers are just `// 类: X`, and section titles carry no file paths.
+The default corpus contains official translation/data chunks only. Code chunks are opt-in and require `source split`; source lookup should normally use the `ilspycmd -p` project in `workspace/src/` or the local file-search plugin. Never upload a mixed Stable/Nightly workspace.
 
 ## Known pitfalls
 
@@ -259,14 +283,14 @@ The packing mirrors AstrBot's own chunker (selected in `astrbot/core/knowledge_b
 - **The cp936 redirect also silently corrupts un-encodable characters into `?` (2026-10-11).** When the redirect lands on cp936, chars outside GBK — `✓ ♪ ♥ ㎢` full-width ellipsis — are replaced by `?` *at write time*, and diffing against a UTF-8 baseline yields a dozen fake "code changes" (`"あ・・・"` → `"あ???"`). Neither the no-U+FFFD assert nor the version assert catches this, because `?` is legal ASCII. Fix: run ilspycmd from a batch file that does `chcp 65001` first (output is then real UTF-8; verified all special chars survive), and add an acceptance check that known special chars survive (`grep '✓'`). A diff full of `?` swallowing Unicode is an encoding artifact, not a game change.
 - **Language-pack column semantics**: `name` is the default column, normally containing Chinese; `name_EN` contains English, and `name_JP` contains Japanese. Some untranslated rows have shifted columns: `name` contains English while `name_EN` contains Japanese. This column misalignment indicates that no official Chinese translation exists. When exporting corpus data, carry over every `*_EN` and `*_JP` column to preserve the original text.
   - **Random-name placeholders**: A `*r` value indicates that a random name is generated rather than a fixed name. It does not indicate whether an official Chinese translation exists. Look up `aka` or `detail` for the corresponding name or description, and explicitly state that the original entry uses a `*r` placeholder. If neither field provides the relevant information, state that as well.
-- **`extract_things.py` needs the language pack to locate row starts.** Without `lang/Thing.json` in the output dir it silently produces 0 rows (the script prints a warning), so the language-pack step must run first.
+- **The strict `data extract --all` command exports the language pack before parsing binary rows.** Do not run a partial table extraction against an incomplete workspace.
 - **Serialized layout ≠ decompiled declaration — verify at the byte level, in both directions.** Some fields visible in the decompile are NOT in the stream (`SourceMaterial`'s `matColor`/`altColor`), and the reverse also happens: `SourceThing`'s `colorType` looks absent but IS serialized (it sits right after `defMat`; the first row's empty value once misaligned the whole chain). Also measured: `pref` is a bare `int[26]` with **no BitArray32 after it**, and `SourceJob.domain` is a paired `int[]`, not `string[]`. When a chain parse dies mid-table, hex-dump the rows around the break and diff two adjacent rows field by field instead of re-reading the class body.
 - **Locating a table inside sharedassets0.assets**: search for the object's `m_Name` string (e.g. `\x0bSourceThing`); the header after it is `[int 1][editor name][source xlsx name][int row count]` followed by the rows. Chain-parse with three checks per row: `_index` increments from 0, `id` ∈ language pack, category/race/job ∈ their own tables. Strings are `len32 + UTF-8 + align4`, bools are 1 byte + align4, arrays are `count + elements`; base-class fields come first, declaration order = serialization order.
 - **Character sprite cropping**: the character atlas is a plain PNG on disk — `Package/_Elona/Texture/objs_C.png` (the `pass chara` material's main texture, bound at runtime; **do not hunt for a "chara" texture inside .assets**, you won't find it). Grid is 128px cells, 32 per row, linear tile index from `charas_full.jsonl` `_tiles`: `row = tile // 32`, `col = tile % 32`; crop the cell, then trim to the alpha bounding box. Large sprites (`_idRenderData == "chara_L"`) live in `objs_L.png`. Character portraits (dialog art) are separate files: `Package/_Elona/Portrait/UN_<chara id>.png` — a character with no file there simply has no portrait.
 - **`pref_ints` is a bare `int[26]` with no names — `SourcePref` exposes it as named properties.** Index map (from the `SourcePref` class, which lives in the decompile): 0 `shadow`/`test`, 1 `flags` (PrefFlag enum), 2 height-ish ×0.01, 3 `height`, 4/5 scale ×0.01, 6/7 plain ints, **8 `shadowX`, 9 `shadowY`, 10 `shadowRX`, 11 `shadowRY`**, 12–15 plain ints, 16 `liquidMod`, 17 ×0.01, 18–20 plain ints, 21 `liquidModMax`, 22 `_bits1`, 23 `hatY`/`defaultAltitude`, 24 `heightFix` ×0.01, 25 `scaleTex`. The only consumer of the `R`/`B` variants is `AddShadow(float x, float y, float z, ShadowData.Item s, SourcePref pref, int dir, bool snow)`, which picks `dir < 2 ? (flag ? shadowRX : shadowX) : (flag ? shadowBRX : shadowBX)` for X and the same shape for Y, all scaled by 0.01, with `flag = dir % 2 == 1` marking a mirrored direction. A version diff that only moves four adjacent pref values is a **drop-shadow nudge**, not a stat change — that is exactly how the 23.352 Patch 1 update touched `bigdoor1R` and nothing else in 2587 item rows.
 - **A field name can mean two different variables.** `Act.TC` / `Act.CC` / `Act.TP` are **static** fields on `Act`, while `AttackProcess` declares same-named **instance** fields that shadow them — so a bare `TC` inside `AttackProcess` and an explicit `Act.TC` are different variables, and only the latter is process-wide. Check the qualifier and the call chain before naming a culprit: on the throw path (`ActThrow` → `AttackProcess.Perform(count, hasHit)`) the reachable write to the shared field is `Chara.DoHostileAction`, when a stealthed chara is spotted at range and fires a nested throw; `AttackProcess.Attack()`'s protection-interception callback, its sub-attack helper and `ActMeleeCounter` are **not** on that chain. The 23.352 Patch 1 fix in `ActThrow` snapshots and restores these fields around the throw attack precisely so a leaked target cannot reach the follow-up TraitErohon / DoHostileAction / training-dummy logic.
-- **A C# language server needs a project, not a pile of `.cs` files**: serving the source dir to `astrbot_plugin_self_file_search`'s LSP tools only works when the dir is the `ilspycmd -p` output (`Elin.csproj` + files that keep their `using` headers). Loose directories throw `System.Exception: no or .csproj/.fsproj or sln files found` at startup, and `split_decompiled.py`'s per-class split is unusable for this because those files were cut out of a single dump and carry no `using` lines.
-- **Version diffing**: archive the old decompile before regenerating. `diff_by_class.py` shows which classes changed, but empty shells and pure-render classes are mostly noise.
+- **A C# language server needs a project, not a pile of `.cs` files**: serving the source dir to `astrbot_plugin_self_file_search`'s LSP tools only works when the dir is the `ilspycmd -p` output (`Elin.csproj` + files that keep their `using` headers). Loose directories throw `System.Exception: no or .csproj/.fsproj or sln files found` at startup, and `scripts source split`'s per-class split is unusable for this because those files were cut out of a single dump and carry no `using` lines.
+- **Version diffing**: archive the old decompile before regenerating. `scripts diff code` shows which classes changed, but empty shells and pure-render classes are mostly noise.
 - **Never put intermediate files in `/tmp`**: Git Bash and Windows Python resolve it differently; use project-relative paths.
 - **Entities lose their names when packed**: after packing several entities into one heading section, only the first entity's title survives. Every entity's body must carry a `**Name (table id=xxx)**` line, otherwise later entities in the same section lose their id and primary name.
 
