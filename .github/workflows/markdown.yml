@@ -4,16 +4,12 @@ on:
   push:
     paths:
       - '**/*.md'
-      - '.markdownlint-cli2.jsonc'
-      - 'package.json'
-      - 'package-lock.json'
+      - '.ci/markdown/**'
       - '.github/workflows/markdown.yml'
   pull_request:
     paths:
       - '**/*.md'
-      - '.markdownlint-cli2.jsonc'
-      - 'package.json'
-      - 'package-lock.json'
+      - '.ci/markdown/**'
       - '.github/workflows/markdown.yml'
 
 permissions:
@@ -29,5 +25,8 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: .ci/markdown/package-lock.json
       - run: npm ci --ignore-scripts
+        working-directory: .ci/markdown
       - run: npm run lint:md
+        working-directory: .ci/markdown

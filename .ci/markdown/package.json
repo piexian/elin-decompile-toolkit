@@ -2,7 +2,7 @@
   "name": "elin-decompile-toolkit-docs",
   "private": true,
   "scripts": {
-    "lint:md": "markdownlint-cli2"
+    "lint:md": "markdownlint-cli2 --config markdownlint-cli2.jsonc"
   },
   "devDependencies": {
     "markdownlint-cli2": "0.24.1"

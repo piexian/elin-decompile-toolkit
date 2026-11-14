@@ -1,0 +1,13 @@
+{
+  "globs": ["../../**/*.md"],
+  "ignores": ["node_modules/**", "../../node_modules/**", "../../.ci/markdown/node_modules/**", "data/**", "src/**", "kb/**", "work/**"],
+  "config": {
+    "MD013": false,
+    "MD033": false,
+    "MD041": false,
+    "MD031": false,
+    "MD034": false,
+    "MD040": false,
+    "MD060": false
+  }
+}
