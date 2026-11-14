@@ -2,6 +2,7 @@
 
 > 简体中文版：[README.md](README.md)
 
+
 > [!TIP]
 > **Quick install: send this sentence to your Agent**
 >
