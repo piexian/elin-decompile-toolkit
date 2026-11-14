@@ -1,13 +1,13 @@
 # Elin 反编译考据工具箱
 
 > 英文版：[README_en.md](README_en.md)
-
+>
 > [!TIP]
 > **懒人安装：把这句话发给你的 Agent**
 >
-``` bash
-帮我安装 `piexian/elin-decompile-toolkit` 这个 Agent Skill。优先运行 `npx skills add piexian/elin-decompile-toolkit -y`；如果 GitHub 不可用，改用 `https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git`。安装后确认 `SKILL.md` 和 `scripts/` 同级，并运行 `python -m scripts --help` 验证。
-```
+> ``` bash
+> 帮我安装 `piexian/elin-decompile-toolkit` 这个 Agent Skill。优先运行 `npx skills add piexian/elin-decompile-toolkit -y`；如果 GitHub 不可用，改用 `https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git`。安装后确认 `SKILL.md` 和 `scripts/` 同级，并运行 `python -m scripts --help` 验证。
+> ```
 给 AI Agent 用的 [Agent Skill](https://skills.sh)：从本地《Elin》提取官方数据、反编译源码、比较 Stable/Nightly 版本、生成 wiki 草稿和本地知识库。
 
 ## 安装
@@ -76,6 +76,6 @@ python -m scripts chunks --workspace "$WS"
 | `pages` / `sprites` | 生成角色、地点、神祇草稿并裁剪图集 |
 | `ylvapedia fetch` / `pages enrich-ylvapedia` | 缓存并生成带来源的外部补充审阅稿 |
 
-官方中文名和本地游戏数据优先，禁止自译；Ylvapedia 只作补充。`ilspycmd` 输出严格按 UTF-8/GBK 检测，语言包 `*r` 保留原名占位；不要混用版本或使用部分解析结果。
+官方中文名和本地游戏数据优先，禁止自译；Ylvapedia 只作补充。`ilspycmd` 输出严格按 UTF-8/GBK 检测；语言包 `*r` 表示随机名字，通常应查 `aka` 或 `detail`，不是固定原名占位。不要混用版本或使用部分解析结果。
 
 完整参数、版本 diff、知识库、MCP 安装和故障处理见 [SKILL.md](SKILL.md)。
