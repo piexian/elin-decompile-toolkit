@@ -1,11 +1,13 @@
 # Elin Decompilation Research Toolkit
 
 > 简体中文版：[README.md](README.md)
->
+
 > [!TIP]
 > **Quick install: send this sentence to your Agent**
 >
-> Install the `piexian/elin-decompile-toolkit` Agent Skill for me. Prefer `npx skills add piexian/elin-decompile-toolkit -y`; if GitHub is unavailable, use `https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git`. After installation, verify that `SKILL.md` and `scripts/` are siblings and run `python -m scripts --help`.
+```bash
+Install the `piexian/elin-decompile-toolkit` Agent Skill for me. Prefer `npx skills add piexian/elin-decompile-toolkit -y`; if GitHub is unavailable, use `https://gitcode.com/PIEXIAN/elin-decompile-toolkit.git`. After installation, verify that `SKILL.md` and `scripts/` are siblings and run `python -m scripts --help`.
+```
 An [Agent Skill](https://skills.sh) for extracting official Elin data, decompiling source, comparing Stable/Nightly versions, generating wiki drafts and building a local knowledge base.
 
 ## Install
