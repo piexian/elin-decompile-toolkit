@@ -156,7 +156,7 @@ python scripts/lookup.py 奶酪
 ## 已知坑
 
 - `ilspycmd` 的输出编码**不要假设**：重定向形式走 Windows 控制台代码页（中文机器是 GBK），`-o` 目录形式在不同构建间既出现过 GBK 也出现过 UTF-8。直接按 UTF-8 读会抛 `UnicodeDecodeError`；用 `errors='ignore'` 绕开会让日文变成乱码，容易被误判成「游戏改了字符串」。落盘固定走「先试 `utf-8-sig`、失败退 `cp936`、断言无 U+FFFD」，并把 CRLF 归一成 LF 再 diff，否则 2 行真实改动会变成全文件 45.8 万行幻影 diff。
-- 语言包里未翻译的行在 `name` 列填 `*r` 占位符，真正的名字在 `name_JP` / `detail_JP` 等列，导出语料时要把这些列一起带出来。
+- 语言包里语言包里部分行在 `name` 列填 `*r` 占位符，这代表使用随机名字，我们一般使用其 `aka`。
 - `extract_things.py` 依赖语言包做行首识别，语言包没先跑会产出 0 行（脚本会警告）。
 - 中间文件别放 `/tmp`：Git Bash 和 Windows Python 对它的解释不一致。
 
