@@ -135,6 +135,10 @@ def diff_code(old_ws: Path, new_ws: Path) -> str:
         new_files = {p.relative_to(new_src).as_posix() for p in new_src.rglob("*.cs")}
     except OSError as e:
         raise WorkspaceError(f"遍历 src 失败：{e}") from e
+    if not old_files and not new_files:
+        raise WorkspaceError(
+            "两个 workspace 都没有 .cs 源码（先分别执行 decompile），不能据此判断版本无差异"
+        )
 
     stats = defaultdict(lambda: {"+": 0, "-": 0, "samples": []})
     added = removed = changed = 0
