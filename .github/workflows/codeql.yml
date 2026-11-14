@@ -3,15 +3,17 @@ name: CodeQL Advanced
 on:
   push:
     branches: [main]
+    paths:
+      - 'scripts/**'
   pull_request:
     branches: [main]
+    paths:
+      - 'scripts/**'
   schedule:
     - cron: '30 1 * * 1'
 
 jobs:
 
-  paths:
-    - 'scripts/**'
   analyze:
     name: Analyze (python)
     runs-on: ubuntu-latest
