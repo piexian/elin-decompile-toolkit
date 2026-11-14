@@ -1,6 +1,6 @@
 # Elin 反编译考据工具箱
 
-> 英文版：[README_en.md](README_en.md)
+[English](README_en.md)
 
 
 > [!TIP]
