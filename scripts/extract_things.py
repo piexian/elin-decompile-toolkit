@@ -12,6 +12,7 @@
   recipeKey, fieldC?, _, components[], factory[], extra[], ...ints..., id, ..., category?, ...
   ...elements(int对)..., filter[], trait[], ... unit 等。
 """
+
 import json
 import os
 import re
@@ -25,11 +26,11 @@ from steam_locate import find_game_dir
 def is_str_at(data, p):
     if p + 4 > len(data):
         return None
-    ln = struct.unpack('<i', data[p:p + 4])[0]
+    ln = struct.unpack("<i", data[p : p + 4])[0]
     if 0 < ln < 100 and p + 4 + ln <= len(data):
-        s = data[p + 4:p + 4 + ln]
+        s = data[p + 4 : p + 4 + ln]
         try:
-            t = s.decode('utf-8')
+            t = s.decode("utf-8")
             if t and all(c.isprintable() for c in t):
                 return t, (p + 4 + ln + 3) & ~3
         except UnicodeDecodeError:
@@ -44,17 +45,17 @@ def walk_tokens(data, start, end):
     while p < end:
         r = is_str_at(data, p)
         if r:
-            toks.append(('s', r[0]))
+            toks.append(("s", r[0]))
             p = r[1]
         else:
-            toks.append(('i', struct.unpack('<i', data[p:p + 4])[0]))
+            toks.append(("i", struct.unpack("<i", data[p : p + 4])[0]))
             p += 4
     return toks
 
 
 def find_thing_region(data):
     """定位 SourceThing 区域: 用已知物品名锚定"""
-    anchors = [b'\x06\x00\x00\x00cheese', b'\x06\x00\x00\x00burger']
+    anchors = [b"\x06\x00\x00\x00cheese", b"\x06\x00\x00\x00burger"]
     pts = []
     for a in anchors:
         m = re.search(re.escape(a), data)
@@ -66,11 +67,11 @@ def find_thing_region(data):
 def load_known_names(outdir):
     """官方语言包里的全部物品英文名/日文名, 用于精确识别行首"""
     names = set()
-    for fn in ('Thing.json', 'ThingV.json'):
-        p = os.path.join(outdir, 'lang', fn)
+    for fn in ("Thing.json", "ThingV.json"):
+        p = os.path.join(outdir, "lang", fn)
         if os.path.exists(p):
-            for row in json.load(open(p, encoding='utf-8')).values():
-                for k in ('name_EN', 'name', 'name_JP'):
+            for row in json.load(open(p, encoding="utf-8")).values():
+                for k in ("name_EN", "name", "name_JP"):
                     v = row.get(k)
                     if v:
                         names.add(v)
@@ -86,8 +87,12 @@ def extract_things(data, lo, hi, known_names):
         r1 = is_str_at(data, p)
         if r1 and r1[0] in known_names:
             r2 = is_str_at(data, r1[1])
-            if (r2 and any(ord(c) > 0x7f for c in r2[0])
-                    and is_str_at(data, r2[1]) is None and is_str_at(data, r2[1] + 4) is None):
+            if (
+                r2
+                and any(ord(c) > 0x7F for c in r2[0])
+                and is_str_at(data, r2[1]) is None
+                and is_str_at(data, r2[1] + 4) is None
+            ):
                 starts.append((p, r1[0], r2[0]))
                 p = r1[1]
                 continue
@@ -98,28 +103,32 @@ def extract_things(data, lo, hi, known_names):
         if end - off > 1400:
             end = off + 1400
         toks = walk_tokens(data, off, end)
-        rows.append({'offset': off, 'name_en': name_en, 'name_jp': name_jp, 'tokens': toks})
+        rows.append(
+            {"offset": off, "name_en": name_en, "name_jp": name_jp, "tokens": toks}
+        )
     return rows
 
 
 def interpret(row):
     """按确认的字段布局提取关键字段; 失败时保留原始 tokens"""
-    t = row['tokens']
-    out = {'name_en': row['name_en'], 'name_jp': row['name_jp']}
-    strs = [v for k, v in t if k == 's']
+    t = row["tokens"]
+    out = {"name_en": row["name_en"], "name_jp": row["name_jp"]}
+    strs = [v for k, v in t if k == "s"]
+
     # 布局: [0]=name_en [1]=name_jp [2]=renderData [3]=tileType?(可缺) [4]=defMat [5]=recipeKey [6]=fieldC(可缺) 之后是数组区
     # 数组区定位: 找到第一个 ('i', n) 后紧跟 n 个 's' 的位置
     def read_array(i):
-        if i < len(t) and t[i][0] == 'i' and 0 < t[i][1] <= 12:
+        if i < len(t) and t[i][0] == "i" and 0 < t[i][1] <= 12:
             n = t[i][1]
-            if all(j < len(t) and t[j][0] == 's' for j in range(i + 1, i + 1 + n)):
+            if all(j < len(t) and t[j][0] == "s" for j in range(i + 1, i + 1 + n)):
                 return [t[j][1] for j in range(i + 1, i + 1 + n)], i + 1 + n
         return None, i
+
     # 顺序扫描: 跳过头部单字符串, 直到遇到第一个合法数组
     i = 0
     head = []
     while i < len(t):
-        if t[i][0] == 's':
+        if t[i][0] == "s":
             head.append(t[i][1])
             i += 1
         else:
@@ -131,7 +140,7 @@ def interpret(row):
     arr1, i = read_array(i) if i < len(t) else (None, i)
     # 找 factory: 跳过中间 int, 读下一个数组
     j = i
-    while j < len(t) and t[j][0] == 'i':
+    while j < len(t) and t[j][0] == "i":
         j += 1
     arr2 = None
     if j > i and j - 1 < len(t):
@@ -140,12 +149,12 @@ def interpret(row):
             a2, _ = read_array(k)
             if a2 is not None:
                 arr2 = a2
-    out['head_strings'] = head
-    out['components'] = arr1
-    out['factory'] = arr2
+    out["head_strings"] = head
+    out["components"] = arr1
+    out["factory"] = arr2
     # id: 数组区之后第一个"像id"的字符串
-    tail = [v for k, v in t[len(head):] if k == 's']
-    out['tail_strings'] = tail
+    tail = [v for k, v in t[len(head) :] if k == "s"]
+    out["tail_strings"] = tail
     return out
 
 
@@ -155,14 +164,18 @@ def resolve_assets(data_dir):
     if not data_dir:
         data_dir = find_game_dir()
         if not data_dir:
-            raise SystemExit('找不到 Elin 安装目录：请装在 Steam 库里，或用环境变量 '
-                             'ELIN_GAME_DIR / 第一个参数指定游戏根目录')
-        print(f'自动定位游戏: {data_dir}')
-    for cand in (data_dir, os.path.join(data_dir, 'Elin_Data')):
-        p = os.path.join(cand, 'sharedassets0.assets')
+            raise SystemExit(
+                "找不到 Elin 安装目录：请装在 Steam 库里，或用环境变量 "
+                "ELIN_GAME_DIR / 第一个参数指定游戏根目录"
+            )
+        print(f"自动定位游戏: {data_dir}")
+    for cand in (data_dir, os.path.join(data_dir, "Elin_Data")):
+        p = os.path.join(cand, "sharedassets0.assets")
         if os.path.exists(p):
             return p
-    raise SystemExit(f'找不到 sharedassets0.assets：请传游戏根目录或 Elin_Data 目录（实际得到 {data_dir}）')
+    raise SystemExit(
+        f"找不到 sharedassets0.assets：请传游戏根目录或 Elin_Data 目录（实际得到 {data_dir}）"
+    )
 
 
 def main():
@@ -174,30 +187,38 @@ def main():
     else:
         raise SystemExit(__doc__)
     os.makedirs(outdir, exist_ok=True)
-    data = open(resolve_assets(data_dir), 'rb').read()
+    data = open(resolve_assets(data_dir), "rb").read()
     lo, hi = find_thing_region(data)
     known = load_known_names(outdir)
-    print(f'known names: {len(known)}')
+    print(f"known names: {len(known)}")
     if not known:
-        print('  !! 语言包为空：先跑 lang_xlsx_to_json.py 把 Thing.json 放进 <输出目录>/lang/，'
-              '否则行首识别没有依据，会静默产出 0 行')
+        print(
+            "  !! 语言包为空：先跑 lang_xlsx_to_json.py 把 Thing.json 放进 <输出目录>/lang/，"
+            "否则行首识别没有依据，会静默产出 0 行"
+        )
     rows = extract_things(data, lo, hi, known)
-    with open(os.path.join(outdir, 'things.jsonl'), 'w', encoding='utf-8') as f:
+    with open(os.path.join(outdir, "things.jsonl"), "w", encoding="utf-8") as f:
         for r in rows:
             info = interpret(r)
-            f.write(json.dumps(info, ensure_ascii=False) + '\n')
+            f.write(json.dumps(info, ensure_ascii=False) + "\n")
     recipes = []
     for r in rows:
         info = interpret(r)
-        comps = info.get('components')
-        if comps and comps != ['-'] and info.get('factory'):
-            recipes.append({'name_en': info['name_en'], 'name_jp': info['name_jp'],
-                            'components': comps, 'factory': info['factory'],
-                            'tail': info.get('tail_strings', [])[:4]})
-    with open(os.path.join(outdir, 'recipes.json'), 'w', encoding='utf-8') as f:
+        comps = info.get("components")
+        if comps and comps != ["-"] and info.get("factory"):
+            recipes.append(
+                {
+                    "name_en": info["name_en"],
+                    "name_jp": info["name_jp"],
+                    "components": comps,
+                    "factory": info["factory"],
+                    "tail": info.get("tail_strings", [])[:4],
+                }
+            )
+    with open(os.path.join(outdir, "recipes.json"), "w", encoding="utf-8") as f:
         json.dump(recipes, f, ensure_ascii=False, indent=1)
-    print(f'things: {len(rows)} rows, recipes: {len(recipes)}')
+    print(f"things: {len(rows)} rows, recipes: {len(recipes)}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

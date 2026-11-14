@@ -19,6 +19,7 @@
 输出: 默认 drafts/characters/<官方中文名>/Elin_Npc_Sprite_<大驼峰id>.png（+ _8x 预览）
   物品输出到 drafts/objects/<官方中文名>/Elin_Icon_<大驼峰id>.png。
 """
+
 import json
 import os
 import sys
@@ -28,112 +29,135 @@ from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TILE = 128
 ATLAS = {  # 渲染数据 → (图集文件, 列数, 条带行数)
-    'chara': ('objs_C.png', 32, 1),
-    'chara_L': ('objs_CL.png', 32, 2),
-    'chara_LW': ('objs_CL.png', 32, 2),
-    'chara_LL': ('objs_CLL.png', 16, 3),
+    "chara": ("objs_C.png", 32, 1),
+    "chara_L": ("objs_CL.png", 32, 2),
+    "chara_LW": ("objs_CL.png", 32, 2),
+    "chara_LL": ("objs_CLL.png", 16, 3),
 }
 THINGS = {  # 物件渲染数据前缀 → (图集文件, 格子px)
-    'obj': ('objs.png', 64),
-    'obj_S': ('objs_S.png', 32),
+    "obj": ("objs.png", 64),
+    "obj_S": ("objs_S.png", 32),
 }
 
 
 def game_dir():
-    env = os.environ.get('ELIN_GAME_DIR')
+    env = os.environ.get("ELIN_GAME_DIR")
     if env:
         return env
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from steam_locate import find_game_dir
+
     g = find_game_dir()
     if not g:
-        raise SystemExit('找不到 Elin 安装目录：请设 ELIN_GAME_DIR')
+        raise SystemExit("找不到 Elin 安装目录：请设 ELIN_GAME_DIR")
     return g
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
     outdir = None
     name = None
-    trim = '--trim' in sys.argv
-    snow = '--snow' in sys.argv
+    trim = "--trim" in sys.argv
+    snow = "--snow" in sys.argv
     tile = None
     for a in sys.argv[1:]:
-        if a.startswith('--outdir='):
-            outdir = a.split('=', 1)[1]
-        elif a.startswith('--name='):
-            name = a.split('=', 1)[1]
-        elif a.startswith('--tile='):
-            tile = int(a.split('=', 1)[1])
+        if a.startswith("--outdir="):
+            outdir = a.split("=", 1)[1]
+        elif a.startswith("--name="):
+            name = a.split("=", 1)[1]
+        elif a.startswith("--tile="):
+            tile = int(a.split("=", 1)[1])
     if not args:
         raise SystemExit(__doc__)
 
     charas = {}
-    with open(os.path.join(ROOT, 'data', 'charas_full.jsonl'), encoding='utf-8') as f:
+    with open(os.path.join(ROOT, "data", "charas_full.jsonl"), encoding="utf-8") as f:
         for line in f:
             c = json.loads(line)
-            charas[c['id']] = c
+            charas[c["id"]] = c
     things = {}
-    with open(os.path.join(ROOT, 'data', 'things_full.jsonl'), encoding='utf-8') as f:
+    with open(os.path.join(ROOT, "data", "things_full.jsonl"), encoding="utf-8") as f:
         for line in f:
             t = json.loads(line)
-            things[t['id']] = t
-    lang = json.load(open(os.path.join(ROOT, 'data', 'lang', 'Chara.json'), encoding='utf-8'))
-    lang_t = json.load(open(os.path.join(ROOT, 'data', 'lang', 'Thing.json'), encoding='utf-8'))
+            things[t["id"]] = t
+    lang = json.load(
+        open(os.path.join(ROOT, "data", "lang", "Chara.json"), encoding="utf-8")
+    )
+    lang_t = json.load(
+        open(os.path.join(ROOT, "data", "lang", "Thing.json"), encoding="utf-8")
+    )
     gdir = game_dir()
 
     for cid in args:
         c = charas.get(cid)
         if c:
-            rd = c['_idRenderData']
+            rd = c["_idRenderData"]
             atlas_file, cols, span = ATLAS[rd]
             if tile is not None:
                 idx = tile
             elif snow:
-                arr = c.get('_tiles_snow') or c.get('tiles_snow')
+                arr = c.get("_tiles_snow") or c.get("tiles_snow")
                 if not arr:
-                    raise SystemExit('%s 没有冬装图块（tiles_snow 为空）' % cid)
+                    raise SystemExit("%s 没有冬装图块（tiles_snow 为空）" % cid)
                 idx = arr[0]
             else:
-                idx = (c['_tiles'] or c['tiles'])[0]
+                idx = (c["_tiles"] or c["tiles"])[0]
             col, row = idx % cols, idx // cols
-            atlas = Image.open(os.path.join(gdir, 'Package', '_Elona', 'Texture', atlas_file)).convert('RGBA')
+            atlas = Image.open(
+                os.path.join(gdir, "Package", "_Elona", "Texture", atlas_file)
+            ).convert("RGBA")
             span = min(span, atlas.height // TILE - row)
-            strip = atlas.crop((col * TILE, row * TILE, (col + 1) * TILE, (row + span) * TILE))
+            strip = atlas.crop(
+                (col * TILE, row * TILE, (col + 1) * TILE, (row + span) * TILE)
+            )
             s = strip.crop(strip.getbbox())
             if outdir is None:
-                zh = (lang.get(cid) or {}).get('name') or ''
-                zh = zh if zh and not zh.startswith('*') else cid
-                outdir = os.path.join(ROOT, 'drafts', 'characters', zh)
-            out_name = name or ('Elin_Npc_Sprite_' + ''.join(w.capitalize() for w in cid.split('_')) + ('Snow' if snow else ''))
+                zh = (lang.get(cid) or {}).get("name") or ""
+                zh = zh if zh and not zh.startswith("*") else cid
+                outdir = os.path.join(ROOT, "drafts", "characters", zh)
+            out_name = name or (
+                "Elin_Npc_Sprite_"
+                + "".join(w.capitalize() for w in cid.split("_"))
+                + ("Snow" if snow else "")
+            )
         else:
             t = things.get(cid)
             if not t:
-                raise SystemExit('未知 id: ' + cid)
-            rd = t['_idRenderData']
-            family = rd.split(' ')[0]
+                raise SystemExit("未知 id: " + cid)
+            rd = t["_idRenderData"]
+            family = rd.split(" ")[0]
             if family not in THINGS:
-                raise SystemExit('渲染数据 %r 暂不支持（obj_L/obj_SS 等请手工核对偏移）' % rd)
+                raise SystemExit(
+                    "渲染数据 %r 暂不支持（obj_L/obj_SS 等请手工核对偏移）" % rd
+                )
             atlas_file, cell = THINGS[family]
-            idx = (t['tiles'] or [0])[0]
+            idx = (t["tiles"] or [0])[0]
             col, row = idx % 100, idx // 100
-            sx = max(int(t.get('W') or 1), 1)
-            sy = max(int(t.get('H') or 1), 2 if 'tall' in rd else 1)
-            atlas = Image.open(os.path.join(gdir, 'Package', '_Elona', 'Texture', atlas_file)).convert('RGBA')
+            sx = max(int(t.get("W") or 1), 1)
+            sy = max(int(t.get("H") or 1), 2 if "tall" in rd else 1)
+            atlas = Image.open(
+                os.path.join(gdir, "Package", "_Elona", "Texture", atlas_file)
+            ).convert("RGBA")
             sx = min(sx, atlas.width // cell - col)
             sy = min(sy, atlas.height // cell - row)
-            strip = atlas.crop((col * cell, row * cell, (col + sx) * cell, (row + sy) * cell))
+            strip = atlas.crop(
+                (col * cell, row * cell, (col + sx) * cell, (row + sy) * cell)
+            )
             s = strip if trim else strip.crop((0, 0, strip.width, strip.height))
             if outdir is None:
-                zh = (lang_t.get(cid) or {}).get('name') or ''
-                zh = zh if zh and not zh.startswith('*') else cid
-                outdir = os.path.join(ROOT, 'drafts', 'objects', zh)
-            out_name = name or ('Elin_Icon_' + ''.join(w.capitalize() for w in cid.split('_')))
+                zh = (lang_t.get(cid) or {}).get("name") or ""
+                zh = zh if zh and not zh.startswith("*") else cid
+                outdir = os.path.join(ROOT, "drafts", "objects", zh)
+            out_name = name or (
+                "Elin_Icon_" + "".join(w.capitalize() for w in cid.split("_"))
+            )
         os.makedirs(outdir, exist_ok=True)
-        s.save(os.path.join(outdir, out_name + '.png'))
-        s.resize((s.width * 8, s.height * 8), Image.NEAREST).save(os.path.join(outdir, out_name + '_8x.png'))
-        print('OK', cid, rd, atlas_file, 'r%dc%d' % (row, col), '->', out_name, s.size)
+        s.save(os.path.join(outdir, out_name + ".png"))
+        s.resize((s.width * 8, s.height * 8), Image.NEAREST).save(
+            os.path.join(outdir, out_name + "_8x.png")
+        )
+        print("OK", cid, rd, atlas_file, "r%dc%d" % (row, col), "->", out_name, s.size)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
