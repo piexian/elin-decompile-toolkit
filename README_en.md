@@ -1,6 +1,6 @@
 # Elin Decompilation Research Toolkit
 
-> 简体中文版：[README.md](README.md)
+[中文](README.md)
 
 
 > [!TIP]
