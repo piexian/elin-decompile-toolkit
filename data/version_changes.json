@@ -1,12 +1,107 @@
 {
   "baseline": {
-    "version": "EA 23.356 Patch 1",
-    "versionInt": "0.23.356.1",
-    "buildDate": "2026-10-13",
+    "version": "EA 23.359 Patch 1",
+    "versionInt": "0.23.359.1",
+    "buildDate": "2026-11-12",
     "channel": "Nightly",
-    "syncedAt": "2026-10-14"
+    "syncedAt": "2026-11-13"
   },
   "versions": [
+    {
+      "version": "EA 23.359 Patch 1",
+      "date": "2026-11-13",
+      "sections": [
+        {
+          "title": "恢复强化 ENC 413（encHeal）",
+          "points": [
+            "新附魔 ENC.encHeal=413（alias encHeal，group ENC，encSlot=all，chance=0 不进随机池，geneSlot=1）。官方中文未填（EN Enhance Heal / JP 回復強化）。",
+            "ActEffect 的 Heal/JureHeal 在骰子（及物品 750 倍率）之后乘 Max(100+CC.Evalue(413),0)/100——施法者身上的 413 才算。",
+            "ConHOT.Tick（自然的拥抱 8450 / 绷带 ConBandage）在骰 SpHOT 后若 Giver!=null 再乘 Giver 的 413。Chara.AddCondition 新重载记录 _giver 与 idGiver=_ints[5]；EffectId.Buff 走 TC.AddCondition(condition, CC)。闻猫 Sniff 无 giver，不吃 413。",
+            "护士装五件每件 elements [413,20]（穿齐 +100），是目前唯一数据来源。"
+          ]
+        },
+        {
+          "title": "宿卵可命名 TraitEQRelic",
+          "points": [
+            "新类 TraitEQRelic : TraitEQ，CanName=true，LangRefText=_named2。relic_lesser trait 改为 EQRelic。Thing 自定义名从写死 _named 改走 trait.LangRefText。",
+            "新语言键 _named2 的 EN/JP 是 #1 #2 / #1#2，CN 列空。DNA/Relicize 未改。"
+          ]
+        },
+        {
+          "title": "吊闸大门与大小姐巨机融合",
+          "points": [
+            "新类 TraitDoorTrapBig : TraitDoorBig，GetDoorPair 搜四邻同类；新物品 bigdoor4L（吊り門/drop gate）。另加大门变体格子門 bigdoor3L/R、石质大扉 bigdoor5L/R。",
+            "Chara.TryFuse 的 younglady 分支从占位 youngladymaton 改成 ojomaton；RestockEquip 机体系 panzerfaust 名单里的占位 youngladymaton 改名为 ojomaton。源表 race roran→machine，elements/actCombat 与少女巨机同族。语言包 aka 填「大小姐巨机」，本名仍 *r。"
+          ]
+        },
+        {
+          "title": "数据、语言包与表现层",
+          "points": [
+            "Thing +12 全无官方中文：护士装五件（掉落挂护士/曾为护士之物/白衣护士）+ 大门四式 + magic_circle_great 大魔法陣 + 1414 床の間。Element +1（413）。charas_full 行数 604 不变。",
+            "23.358 空列补译：不夜城、威斯达、兔女郎四件、大门/大门框架、书包、架子、讲台、当前存档、随机播放。改名：1009/1056/1299 讲台→读书台；2707 自助农业→托管农业。",
+            "SpriteReplacer 抽出 GetData/states/dictOverrides；Zone 激活时预填 wasInWater。摩安店周刊循环 1..26→1..27（中文 Text/Book 到 advweek_26，EN/JP 已有第 27 期 Taxes/税金）。",
+            "value 第六次大重算 991 行（mount/junk/ext/deco/plantpot）——Nightly 不勘误纪律继续。粗口径 things 2229 / recipes 939；严格口径 things_full 2628，与 Thing.json 2628/2628 全覆盖。"
+          ]
+        }
+      ]
+    },
+    {
+      "version": "EA 23.358 Patch 1",
+      "date": "2026-11-09",
+      "sections": [
+        {
+          "title": "新剧情任务链 nevernight（不夜城，无官方中文）",
+          "points": [
+            "新类 QuestNevernight : QuestProgression：dateStarted 记录接取时刻（OnStart 取 world.date.GetRaw），TitlePrefix=★，CanUpdateOnTalk 只在 phase==6 且 IsPCFaction 为真，OnComplete 空。",
+            "Player 对话推进链：phase==0 时需 GetElapsedHour(dateStarted)>=24 才 UpdateOnTalk——刚接任务要等满一天游戏时间才推进。",
+            "每日结算自动接取：IsCompleted(stone_dream) 且未 added 时 Add(nevernight, sorin)；drama 归属索琳，sorin.json 新步骤 quest_nevernight / quest_nevernight1。",
+            "源表 Quest nevernight（★不夜城/Nevernight Castle）+ nevernight1；Person 新 vesda（Vesda/ヴェスダ）。全链只有 EN/JP，无官方中文。",
+            "DramaEventTalk 新字段 ignoreClickSound + drama 动作 ignoreClickSound——演出对白可关闭点击音。CoreDebug F4 改为直接激活 quest_nevernight1 演出（原演奏经验彩蛋删除）。"
+          ]
+        },
+        {
+          "title": "自爆连锁伤害修复（CINT 137）",
+          "points": [
+            "CINT.isAlreadyCommitedSuicide=137。ActEffect.ProcAt 的 Suicide 分支引爆前置 true、DamageEle 后置 false；DamageEle 末尾 RapidCount==0 的补炸循环跳过 GetBool(137) 的卡——正在自爆的单位不会被同一次爆炸二次引爆。",
+            "同分支自爆后死亡判定从发起者 CC 改为当前卡 cc（旧版 CC.Die()）。"
+          ]
+        },
+        {
+          "title": "材质固定标签 CTAG.fixedMat",
+          "points": [
+            "CTAG 新增 fixedMat；Card 创建材质选择的「不随机」判定追加 HasTag(CTAG.fixedMat)——源表 tag 带 fixedMat 的物品创建即用 alias[AliasMaterialOnCreate] 材质，不进 GetRandomMaterial 随机池。与 defMat 首字符 ! 的 fixedMaterial 并行。",
+            "兔装四件（helm/wear/tail/boots_bunny）是该标签的首批用户；掉落挂 chara 291 citizen_casino（yerles+gunner，LV22）各 20%。"
+          ]
+        },
+        {
+          "title": "Mod API：自定义 Widget、装饰图与设置入口",
+          "points": [
+            "WidgetManager 新增 widgetLoaders 静态注册表与 RegisterMeta/CreateConfig；ActivateWidget 先走 LoadCustomWidget；BuildMetas 前广播新事件 elin.widget.metas_building（EVENT.WidgetMetasBuilding）——mod 可注册自己的 widget 与 meta。",
+            "GetCustomSprites(rescan) 除 CorePath.custom/Deco 外还扫 mod 包的 Deco 目录（PackageIterator.GetDirectories），打开装饰列表强制重扫。",
+            "设置窗底部新增 LayerMod 按钮直达模组管理；LayerMod 的 FitTitle 并入 UIText.Fit，详情页在 HeaderNote 后插 moldLine 分隔线；改绑键位只在 action != EAction.None 时覆盖同键。"
+          ]
+        },
+        {
+          "title": "存档快照与杂项修复",
+          "points": [
+            "GameIO 抽出 WriteGame(root)，新增 SaveGameCopy(path)（整拷存档目录+逐区重存 map）。错误报告 ZipSave()：未选/选「当前存档」时先快照到 persistentDataPath/_temp_save 再压缩；存档下拉首位插入 null 项显示 feedbackCurrentSave（Current save，无中文）。",
+            "Map.Save 的 serializedCharas 改 try/finally 清理；WidgetQuestTracker.Instance 两处补空防护；Steam UGC 查询 SetReturnMetadata(true) 且翻页改 actionsNextFrame 逐帧。",
+            "Chara.IsHostile(Chara c) 补 || c == enemy——随从认自己当前锁定的敌人；AI_Shear 范围取点 mustBeWalkable:false（水面/障碍上的毛可剪）；AI_Torture Branch 为 null 时取 0；Thing.RenderMarker 去掉 -0.01 高度偏移。",
+            "QuestEscort.ReleaseEscort 回退 dropCorpse——护送目标解除不再留尸体（23.353 的清单里这一项撤销，奇怪雕像/怪画生成物仍留）。"
+          ]
+        },
+        {
+          "title": "数据与语言包",
+          "points": [
+            "Thing +18 全无官方中文：兔装 4、大扉の枠 bigdoorframeL/R 基础件 + 3..6 变体（trait DoorFrame、cutstone×8+nail×2、LV34）、1412 ランドセル/school bag（junk 分类、Container 3×5 backpack）、1413 ラック/rack（_furniture、randomSkin）、pulpit1/2 教壇（facility、plank×8+book_ancient+book_skill）。",
+            "Quest +2（nevernight/nevernight1）；charas_full 仅 291 行 loot 变化（604 行不变）。",
+            "Element 6752 detail_EN 拼写 courgae→courage；CharaText 四行（black_angel/cat_black/big_daddy/raphael）version 戳改 EA 23.358 正文不变；CN 列零变化。",
+            "value 第五次大重算 982 行（mount/junk/ext/deco/plantpot 为主，无统一系数）——Nightly 不勘误纪律继续。",
+            "粗口径 things 2227（+14）/recipes 938（+13）；严格口径 things_full 2616（+18）；materials/races/jobs/categories/spawnlists/zones 零变化。"
+          ]
+        }
+      ]
+    },
     {
       "version": "EA 23.356 Patch 1",
       "date": "2026-10-14",
